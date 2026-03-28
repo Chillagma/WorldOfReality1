@@ -1,0 +1,10 @@
+^C:\USERS\AVATA\DOWNLOADS\WORLDOFREALITY\OPENGL_TRIANGLE\BUILD_NEW\CMAKEFILES\B9EB938E15C7C121A9FE74E7F0C21378\GENERATE.STAMP.RULE
+setlocal
+"C:\Program Files\CMake\bin\cmake.exe" -SC:/Users/avata/Downloads/WorldOfReality/opengl_triangle -BC:/Users/avata/Downloads/WorldOfReality/opengl_triangle/build_new --check-stamp-list CMakeFiles/generate.stamp.list --vs-solution-file C:/Users/avata/Downloads/WorldOfReality/opengl_triangle/build_new/opengl_triangle.sln
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal & call :cmErrorLevel %errorlevel% & goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd

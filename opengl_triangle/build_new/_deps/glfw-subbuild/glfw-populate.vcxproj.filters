@@ -1,0 +1,44 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="17.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <CustomBuild Include="C:\Users\avata\Downloads\WorldOfReality\opengl_triangle\build_new\_deps\glfw-subbuild\CMakeFiles\cda9ebeff146820de49a459b2d5e5f03\glfw-populate-mkdir.rule">
+      <Filter>CMake Rules</Filter>
+    </CustomBuild>
+    <CustomBuild Include="C:\Users\avata\Downloads\WorldOfReality\opengl_triangle\build_new\_deps\glfw-subbuild\CMakeFiles\cda9ebeff146820de49a459b2d5e5f03\glfw-populate-download.rule">
+      <Filter>CMake Rules</Filter>
+    </CustomBuild>
+    <CustomBuild Include="C:\Users\avata\Downloads\WorldOfReality\opengl_triangle\build_new\_deps\glfw-subbuild\CMakeFiles\cda9ebeff146820de49a459b2d5e5f03\glfw-populate-update.rule">
+      <Filter>CMake Rules</Filter>
+    </CustomBuild>
+    <CustomBuild Include="C:\Users\avata\Downloads\WorldOfReality\opengl_triangle\build_new\_deps\glfw-subbuild\CMakeFiles\cda9ebeff146820de49a459b2d5e5f03\glfw-populate-patch.rule">
+      <Filter>CMake Rules</Filter>
+    </CustomBuild>
+    <CustomBuild Include="C:\Users\avata\Downloads\WorldOfReality\opengl_triangle\build_new\_deps\glfw-subbuild\CMakeFiles\cda9ebeff146820de49a459b2d5e5f03\glfw-populate-configure.rule">
+      <Filter>CMake Rules</Filter>
+    </CustomBuild>
+    <CustomBuild Include="C:\Users\avata\Downloads\WorldOfReality\opengl_triangle\build_new\_deps\glfw-subbuild\CMakeFiles\cda9ebeff146820de49a459b2d5e5f03\glfw-populate-build.rule">
+      <Filter>CMake Rules</Filter>
+    </CustomBuild>
+    <CustomBuild Include="C:\Users\avata\Downloads\WorldOfReality\opengl_triangle\build_new\_deps\glfw-subbuild\CMakeFiles\cda9ebeff146820de49a459b2d5e5f03\glfw-populate-install.rule">
+      <Filter>CMake Rules</Filter>
+    </CustomBuild>
+    <CustomBuild Include="C:\Users\avata\Downloads\WorldOfReality\opengl_triangle\build_new\_deps\glfw-subbuild\CMakeFiles\cda9ebeff146820de49a459b2d5e5f03\glfw-populate-test.rule">
+      <Filter>CMake Rules</Filter>
+    </CustomBuild>
+    <CustomBuild Include="C:\Users\avata\Downloads\WorldOfReality\opengl_triangle\build_new\_deps\glfw-subbuild\CMakeFiles\d9ba2f123d4d66974a18fc8d11614753\glfw-populate-complete.rule">
+      <Filter>CMake Rules</Filter>
+    </CustomBuild>
+    <CustomBuild Include="C:\Users\avata\Downloads\WorldOfReality\opengl_triangle\build_new\_deps\glfw-subbuild\CMakeFiles\f81860b3a3f001bfea719ec7b78e9b3e\glfw-populate.rule">
+      <Filter>CMake Rules</Filter>
+    </CustomBuild>
+    <CustomBuild Include="C:\Users\avata\Downloads\WorldOfReality\opengl_triangle\build_new\_deps\glfw-subbuild\CMakeLists.txt" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="C:\Users\avata\Downloads\WorldOfReality\opengl_triangle\build_new\_deps\glfw-subbuild\CMakeFiles\glfw-populate" />
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="CMake Rules">
+      <UniqueIdentifier>{06DD91B0-989D-3795-A326-8EF9AE16A79D}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+</Project>

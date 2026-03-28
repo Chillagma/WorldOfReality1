@@ -1,0 +1,9 @@
+{
+	"InstallScripts" : 
+	[
+		"C:/Users/avata/Downloads/WorldOfReality/opengl_triangle/build_new/cmake_install.cmake",
+		"C:/Users/avata/Downloads/WorldOfReality/opengl_triangle/build_new/_deps/glfw-build/cmake_install.cmake",
+		"C:/Users/avata/Downloads/WorldOfReality/opengl_triangle/build_new/_deps/glfw-build/src/cmake_install.cmake"
+	],
+	"Parallel" : false
+}

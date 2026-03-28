@@ -1,0 +1,10 @@
+^C:\USERS\AVATA\DOWNLOADS\WORLDOFREALITY\OPENGL_TRIANGLE\BUILD_NEW\_DEPS\GLFW-SUBBUILD\CMAKELISTS.TXT
+setlocal
+"C:\Program Files\CMake\bin\cmake.exe" -SC:/Users/avata/Downloads/WorldOfReality/opengl_triangle/build_new/_deps/glfw-subbuild -BC:/Users/avata/Downloads/WorldOfReality/opengl_triangle/build_new/_deps/glfw-subbuild --check-stamp-file C:/Users/avata/Downloads/WorldOfReality/opengl_triangle/build_new/_deps/glfw-subbuild/CMakeFiles/generate.stamp
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal & call :cmErrorLevel %errorlevel% & goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd

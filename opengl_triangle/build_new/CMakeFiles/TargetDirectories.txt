@@ -1,0 +1,11 @@
+C:/Users/avata/Downloads/WorldOfReality/opengl_triangle/build_new/CMakeFiles/glad.dir
+C:/Users/avata/Downloads/WorldOfReality/opengl_triangle/build_new/CMakeFiles/opengl_triangle.dir
+C:/Users/avata/Downloads/WorldOfReality/opengl_triangle/build_new/CMakeFiles/INSTALL.dir
+C:/Users/avata/Downloads/WorldOfReality/opengl_triangle/build_new/CMakeFiles/ALL_BUILD.dir
+C:/Users/avata/Downloads/WorldOfReality/opengl_triangle/build_new/CMakeFiles/ZERO_CHECK.dir
+C:/Users/avata/Downloads/WorldOfReality/opengl_triangle/build_new/_deps/glfw-build/CMakeFiles/uninstall.dir
+C:/Users/avata/Downloads/WorldOfReality/opengl_triangle/build_new/_deps/glfw-build/CMakeFiles/INSTALL.dir
+C:/Users/avata/Downloads/WorldOfReality/opengl_triangle/build_new/_deps/glfw-build/CMakeFiles/ALL_BUILD.dir
+C:/Users/avata/Downloads/WorldOfReality/opengl_triangle/build_new/_deps/glfw-build/src/CMakeFiles/glfw.dir
+C:/Users/avata/Downloads/WorldOfReality/opengl_triangle/build_new/_deps/glfw-build/src/CMakeFiles/update_mappings.dir
+C:/Users/avata/Downloads/WorldOfReality/opengl_triangle/build_new/_deps/glfw-build/src/CMakeFiles/INSTALL.dir

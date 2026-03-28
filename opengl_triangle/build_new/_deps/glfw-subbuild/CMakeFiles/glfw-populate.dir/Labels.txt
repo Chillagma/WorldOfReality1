@@ -1,0 +1,14 @@
+# Target labels
+ glfw-populate
+# Source files and their labels
+C:/Users/avata/Downloads/WorldOfReality/opengl_triangle/build_new/_deps/glfw-subbuild/CMakeFiles/glfw-populate
+C:/Users/avata/Downloads/WorldOfReality/opengl_triangle/build_new/_deps/glfw-subbuild/CMakeFiles/f81860b3a3f001bfea719ec7b78e9b3e/glfw-populate.rule
+C:/Users/avata/Downloads/WorldOfReality/opengl_triangle/build_new/_deps/glfw-subbuild/CMakeFiles/d9ba2f123d4d66974a18fc8d11614753/glfw-populate-complete.rule
+C:/Users/avata/Downloads/WorldOfReality/opengl_triangle/build_new/_deps/glfw-subbuild/CMakeFiles/cda9ebeff146820de49a459b2d5e5f03/glfw-populate-build.rule
+C:/Users/avata/Downloads/WorldOfReality/opengl_triangle/build_new/_deps/glfw-subbuild/CMakeFiles/cda9ebeff146820de49a459b2d5e5f03/glfw-populate-configure.rule
+C:/Users/avata/Downloads/WorldOfReality/opengl_triangle/build_new/_deps/glfw-subbuild/CMakeFiles/cda9ebeff146820de49a459b2d5e5f03/glfw-populate-download.rule
+C:/Users/avata/Downloads/WorldOfReality/opengl_triangle/build_new/_deps/glfw-subbuild/CMakeFiles/cda9ebeff146820de49a459b2d5e5f03/glfw-populate-install.rule
+C:/Users/avata/Downloads/WorldOfReality/opengl_triangle/build_new/_deps/glfw-subbuild/CMakeFiles/cda9ebeff146820de49a459b2d5e5f03/glfw-populate-mkdir.rule
+C:/Users/avata/Downloads/WorldOfReality/opengl_triangle/build_new/_deps/glfw-subbuild/CMakeFiles/cda9ebeff146820de49a459b2d5e5f03/glfw-populate-patch.rule
+C:/Users/avata/Downloads/WorldOfReality/opengl_triangle/build_new/_deps/glfw-subbuild/CMakeFiles/cda9ebeff146820de49a459b2d5e5f03/glfw-populate-test.rule
+C:/Users/avata/Downloads/WorldOfReality/opengl_triangle/build_new/_deps/glfw-subbuild/CMakeFiles/cda9ebeff146820de49a459b2d5e5f03/glfw-populate-update.rule

@@ -1,0 +1,24 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="17.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <CustomBuild Include="C:\Users\avata\Downloads\WorldOfReality\opengl_triangle\build_new\CMakeFiles\13dc369adb21d139d4d588659bc26ff6\update_mappings.rule">
+      <Filter>CMake Rules</Filter>
+    </CustomBuild>
+    <CustomBuild Include="C:\Users\avata\Downloads\WorldOfReality\opengl_triangle\build_new\_deps\glfw-src\src\CMakeLists.txt" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="C:\Users\avata\Downloads\WorldOfReality\opengl_triangle\build_new\_deps\glfw-src\src\mappings.h.in">
+      <Filter>Header Files</Filter>
+    </None>
+    <None Include="C:\Users\avata\Downloads\WorldOfReality\opengl_triangle\build_new\_deps\glfw-src\CMake\GenerateMappings.cmake" />
+    <None Include="C:\Users\avata\Downloads\WorldOfReality\opengl_triangle\build_new\_deps\glfw-build\src\CMakeFiles\update_mappings" />
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="CMake Rules">
+      <UniqueIdentifier>{E28FAADF-C3DE-3471-928B-2102EDF152DB}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files">
+      <UniqueIdentifier>{7F17C113-5E73-3A84-98BB-5A32280D29D7}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+</Project>
