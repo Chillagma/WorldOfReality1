@@ -56,7 +56,7 @@ void main()
         vec3 camRight = normalize(cross(camDir.xyz, vec3(0.0, 1.0, 0.0)));
         float speed = 0.4;
         final = camPos + (keyW - keyS) * speed * camDir;
-        final.xyz += (keyD - keyA) * speed * camRight*-1.;
+       final.xyz += (keyD - keyA) * speed * camRight*-1.;
     }
     fragColor = final;
 }
