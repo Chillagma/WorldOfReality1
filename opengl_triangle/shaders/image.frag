@@ -1,6 +1,6 @@
 // Note: common.glsl is prepended - contains #version, uniforms, globals, and functions
 #ifndef COMMON_INCLUDED
-out vec4 fragColor;
+vec4 fragColor;
 uniform sampler2D iChannel0;
 uniform float iTime;
 uniform vec2 iResolution;
@@ -18,13 +18,14 @@ float minEdgeDist(vec2 a, vec2 b, vec2 c, vec2 d) { return 0.0; }
 vec3 getBarycentricCoords(vec2 a, vec2 b, vec2 c, vec2 d) { return vec3(0); }
 vec2 rotate(vec2 a) { return vec2(0); }
 vec2 objec(vec3 a, vec2 b) { return vec2(0); }
+
 #endif
 
 // Camera override uniforms
 uniform int uCameraOverride;
 uniform vec3 uCameraPosOverride;
 uniform vec2 uCameraRotOverride;
-
+uniform int uDetectionMode;
 // ============== AESTHETIC HELPERS ==============
 vec3 aces(vec3 x) {
     const float a = 2.51, b = 0.03, c = 2.43, d = 0.59, e = 0.14;
@@ -36,6 +37,21 @@ vec3 adjustSaturation(vec3 color, float saturation) {
     vec3 luminanceWeights = vec3(0.299, 0.587, 0.114);
     float luma = dot(color, luminanceWeights);
     return mix(vec3(luma), color, saturation);
+}
+
+// Distance from point to line segment
+float distToSegment(vec2 p, vec2 a, vec2 b) {
+    vec2 pa = p - a, ba = b - a;
+    float h = clamp(dot(pa, ba) / dot(ba, ba), 0.0, 1.0);
+    return length(pa - ba * h);
+}
+
+// Get minimum distance to any edge of a triangle
+float distToTriangleEdges(vec2 p, vec2 a, vec2 b, vec2 c) {
+    float d1 = distToSegment(p, a, b);
+    float d2 = distToSegment(p, b, c);
+    float d3 = distToSegment(p, c, a);
+    return min(d1, min(d2, d3));
 }
 
 float softShadow(vec3 ro, vec3 rd, float mint, float maxt, float k, vec2 uv) {
@@ -143,6 +159,41 @@ void main() {
     vec2 cornerTri[24] = vec2[](c_bl,c_bm,c_mid1,c_bl,c_mid1,c_ml,c_bm,c_br,c_mid2,c_bm,c_mid2,c_mr,
         c_mr,c_tr,c_mid3,c_mr,c_mid3,c_tm,c_ml,c_tm,c_mid4,c_ml,c_mid4,c_tl);
     
+    // ====== CLEAN OUTLINE SETTINGS ======
+    float outlineWidth = 0.0;        // Thin clean line
+    float outlineSoftness = 0.0;     // Very sharp edge (almost no blur)
+    outlineSoftness= min(outlineSoftness,0.007); // Ensure softness is not zero to avoid artifacts
+    // Outline color options:
+    // Option 1: Pure white (clean)
+    vec3 outlineColor = vec3(0.0);
+    
+    // Option 2: Off-white / cream
+    // vec3 outlineColor = vec3(0.95, 0.92, 0.85);
+    
+    // Option 3: Light gray
+    // vec3 outlineColor = vec3(0.7);
+    
+    // Option 4: Black (for dark outlines)
+    // vec3 outlineColor = vec3(0.0);
+    
+    // Calculate minimum distance to ANY triangle edge
+    float minEdgeDistance = 2000.0;
+    
+    for (int i = 0; i < TRI_SIZE; i++) {
+        vec2 p1 = tri[i*3], p2 = tri[i*3+1], p3 = tri[i*3+2];
+        float d = distToTriangleEdges(uv, p1, p2, p3);
+        minEdgeDistance = min(minEdgeDistance, d);
+    }
+    
+    for (int i = 0; i < CORNER_SIZE; i++) {
+        vec2 p1 = cornerTri[i*3], p2 = cornerTri[i*3+1], p3 = cornerTri[i*3+2];
+        float d = distToTriangleEdges(uv, p1, p2, p3);
+        minEdgeDistance = min(minEdgeDistance, d);
+    }
+    
+    // Sharp outline factor (nearly binary)
+    float outlineFactor = 1.0 - smoothstep(outlineWidth - outlineSoftness, outlineWidth + outlineSoftness, minEdgeDistance);
+    
     // Find hit triangle
     g_globalEdgeDist = 1000.0;
     int hitIdx = -1;
@@ -199,10 +250,10 @@ void main() {
     float t3 = abs(sin(iTime * 0.5));
     
     // ====== BARYCENTRIC CORNER DARKENING SETTINGS ======
-    float cornerDarknessAmount = 0.05;  // How dark corners get (0.0 = black, 1.0 = no darkening)
-    float cornerFalloffStart = 0.4;     // Where darkening starts (0.33 = from center, higher = only near corners)
-    float cornerFalloffEnd = 0.95;      // Where max darkness is reached
-    float cornerPower = 2.0;            // Falloff curve (higher = sharper transition)
+    float cornerDarknessAmount = 0.05;
+    float cornerFalloffStart = 0.4;
+    float cornerFalloffEnd = 0.95;
+    float cornerPower = 2.0;
     
     for (int i = 0; i < TRI_SIZE; i++) {
         vec2 p1=tri[i*3], p2=tri[i*3+1], p3=tri[i*3+2];
@@ -229,18 +280,10 @@ void main() {
             col = mix(col / 1.72, vec3(t3), dt - dr - dl * 0.4);
             
             // ====== BARYCENTRIC CORNER DARKENING ======
-            // Get barycentric coordinates: each component is 0-1, sum to 1
-            // At center: all ~0.33, at corners: one is ~1.0, others ~0.0
             vec3 bary = getBarycentricCoords(uv, p1, p2, p3);
-            
-            // Max barycentric coord: 0.33 at center, 1.0 at corners
             float maxBary = max(bary.x, max(bary.y, bary.z));
-            
-            // Map to darkening: 0 at center, 1 at corners
             float cornerProximity = smoothstep(cornerFalloffStart, cornerFalloffEnd, maxBary);
             cornerProximity = pow(cornerProximity, cornerPower);
-            
-            // Apply darkening: multiply by 1.0 at center, cornerDarknessAmount at corners
             float darkenFactor = mix(1.0, cornerDarknessAmount, cornerProximity);
             col *= darkenFactor;
             
@@ -286,9 +329,12 @@ void main() {
         }
     }
     
+    // ====== APPLY CLEAN OUTLINES - ONLY ON THE LINE ITSELF ======
+    col = mix(col, outlineColor, outlineFactor);
+    
     // ============== ENHANCED 3D LIGHTING ==============
     vec3 lightDir = normalize(vec3(0.8, 0.6, -0.5));
-    vec3 lightDir2 = normalize(vec3(-0.5, 0.3, 0.7));
+    vec3 lightDir2 = normalize(vec3(-0.15, 0.3, 0.7));
     vec3 lightCol = vec3(1.0, 0.95, 0.85);
     vec3 lightCol2 = vec3(0.4, 0.5, 0.7);
     vec3 ambientCol = vec3(0.15, 0.18, 0.25);
@@ -314,9 +360,9 @@ void main() {
     float ao = calcAO(p, normal, uv);
     float shadow = softShadow(p + normal * 0.05, lightDir, 0.1, 40.0, 12.0, uv);
     
-    // Fog (more saturated)
+    // Fog
     vec3 fogCol = vec3(0.55, 0.7, 0.9);
-    float fogAmount = 1.0 - exp(-totalDist * 0.008);
+    float fogAmount = 0;
     
     vec3 finalColor;
     
@@ -324,15 +370,15 @@ void main() {
     float objDarken = 0.5;
     
     if (objectID > 1.5) {
-        // SKY (more saturated)
+        // SKY
         vec3 skyTop = vec3(0.2, 0.4, 0.85);
         vec3 skyHorizon = vec3(0.65, 0.8, 1.0);
         vec3 skyBottom = vec3(0.95, 0.7, 0.5);
         
         float skyGrad = ray.y * 0.5 + 0.5;
-        vec3 skyCol = mix(skyBottom, mix(skyHorizon, skyTop, smoothstep(0.3, 0.8, skyGrad)), smoothstep(0.0, 0.4, skyGrad));
+        vec3 skyCol = vec3(0);
         
-        // Sun glow (warmer/more saturated)
+        // Sun glow
         float sunDot = max(0.0, dot(ray, lightDir));
         skyCol += vec3(1.0, 0.7, 0.2) * pow(sunDot, 32.0) * 0.6;
         skyCol += vec3(1.0, 0.85, 0.6) * pow(sunDot, 4.0) * 0.25;
@@ -350,7 +396,7 @@ void main() {
         finalColor *= objDarken;
         
     } else if (objectID > 0.5) {
-        // GROUND (more saturated)
+        // GROUND
         vec3 groundCol = vec3(0.4, 0.25, 0.15);
         vec3 grassCol = vec3(0.2, 0.45, 0.12);
         
@@ -369,7 +415,7 @@ void main() {
         finalColor *= objDarken;
         
     } else {
-        // OBJECTS (houses, cubes, arches)
+        // OBJECTS
         vec3 objCol = sphereColor;
         
         // Micro detail
@@ -393,7 +439,7 @@ void main() {
         finalColor *= objDarken;
     }
     
-    // Apply fog (not to sky) - also darkened
+    // Apply fog (not to sky)
     if (objectID < 1.5) {
         finalColor = mix(finalColor, fogCol * objDarken, fogAmount * 0.6);
     }
@@ -411,7 +457,7 @@ void main() {
     float vig = pow(vigUV.x * vigUV.y * 16.0, 0.25);
     blended *= mix(0.7, 1.0, vig);
     
-    // Color grading (slightly more contrast for vibrance)
+    // Color grading
     blended = pow(blended, vec3(0.92, 0.98, 1.08));
     
     // ACES tone mapping
@@ -424,5 +470,13 @@ void main() {
     float grain = hash(uv.x * 1000.0 + uv.y * 1000.0 + iTime) * 0.03;
     blended += grain - 0.015;
     
-    fragColor = vec4(clamp(blended, 0.0, 1.0), 1.0);
+       // Detection mode: output objectID as color for CPU readback
+    if (uDetectionMode == 1) {
+        // objectID: 0 = 3D objects, 1 = ground, 2 = sky
+        // Encode as: objects = black, ground = gray, sky = white
+        float id = clamp(objectID / 2.0, 0.0, 1.0);
+        fragColor = vec4(vec3(id), 1.0);
+    } else {
+        fragColor = vec4(clamp(blended, 0.0, 1.0), 1.0);
+    }
 }
