@@ -1,7 +1,6 @@
 // Note: common.glsl is prepended - contains #version, uniforms, globals, and functions
 #ifndef COMMON_INCLUDED
-
- vec4 fragColor;
+out vec4 fragColor;
 uniform sampler2D iChannel0;
 uniform float iTime;
 uniform vec2 iResolution;
@@ -21,6 +20,48 @@ vec2 rotate(vec2 a) { return vec2(0); }
 vec2 objec(vec3 a, vec2 b) { return vec2(0); }
 #endif
 
+// Camera override uniforms
+uniform int uCameraOverride;
+uniform vec3 uCameraPosOverride;
+uniform vec2 uCameraRotOverride;
+
+// ============== AESTHETIC HELPERS ==============
+vec3 aces(vec3 x) {
+    const float a = 2.51, b = 0.03, c = 2.43, d = 0.59, e = 0.14;
+    return clamp((x * (a * x + b)) / (x * (c * x + d) + e), 0.0, 1.0);
+}
+
+// Saturation adjustment function
+vec3 adjustSaturation(vec3 color, float saturation) {
+    vec3 luminanceWeights = vec3(0.299, 0.587, 0.114);
+    float luma = dot(color, luminanceWeights);
+    return mix(vec3(luma), color, saturation);
+}
+
+float softShadow(vec3 ro, vec3 rd, float mint, float maxt, float k, vec2 uv) {
+    float res = 1.0;
+    float t = mint;
+    for(int i = 0; i < 16; i++) {
+        float h = objec(ro + rd * t, uv).x;
+        res = min(res, k * h / t);
+        t += clamp(h, 0.05, 0.5);
+        if(h < 0.001 || t > maxt) break;
+    }
+    return clamp(res, 0.0, 1.0);
+}
+
+float calcAO(vec3 pos, vec3 nor, vec2 uv) {
+    float occ = 0.0;
+    float sca = 1.0;
+    for(int i = 0; i < 4; i++) {
+        float h = 0.02 + 0.1 * float(i);
+        float d = objec(pos + h * nor, uv).x;
+        occ += (h - d) * sca;
+        sca *= 0.9;
+    }
+    return clamp(1.0 - 2.5 * occ, 0.0, 1.0);
+}
+
 void main() {
     vec2 fragCoord = gl_FragCoord.xy;
     vec2 uv = fragCoord / iResolution.xy;
@@ -28,9 +69,19 @@ void main() {
     
     // Init globals
     g_ar = iResolution.x / iResolution.y;
-    g_camDir = texture(iChannel0, vec2(1.5, 0.5) / iResolution.xy).xyz;
-    g_camPos = texture(iChannel0, vec2(2.5, 0.5) / iResolution.xy).xyz + vec3(0.0, 16.0, -64.0);
-    g_camDir = length(g_camDir) < 0.001 ? vec3(0.0, 0.0, 1.0) : normalize(g_camDir);
+    
+    // Camera setup
+    if (uCameraOverride == 1) {
+        float pitch = uCameraRotOverride.x;
+        float yaw = uCameraRotOverride.y;
+        g_camDir = normalize(vec3(cos(pitch) * sin(yaw), sin(pitch), cos(pitch) * cos(yaw)));
+        g_camPos = uCameraPosOverride + vec3(0.0, 16.0, -64.0);
+    } else {
+        g_camDir = texture(iChannel0, vec2(1.5, 0.5) / iResolution.xy).xyz;
+        g_camPos = texture(iChannel0, vec2(2.5, 0.5) / iResolution.xy).xyz + vec3(0.0, 16.0, -64.0);
+        g_camDir = length(g_camDir) < 0.001 ? vec3(0.0, 0.0, 1.0) : normalize(g_camDir);
+    }
+    
     g_camRight = normalize(vec3(g_camDir.z, 0.0, -g_camDir.x));
     g_camUp = cross(g_camDir, g_camRight);
     g_mouse = iMouse.xy == vec2(0.0) ? vec2(0.5) : iMouse.xy / iResolution.xy;
@@ -43,13 +94,39 @@ void main() {
     vec2 v4=vec2(.55,.55), v7=vec2(1,1), v9=vec2(.5,.15), v12=vec2(0,.55);
     vec2 vm1=(v0+v7)*.5, vm2=(v0+v12)*.5, vm3=(v7+v12)*.5;
     
-    // Colors
-    vec3 triColors[19] = vec3[](vec3(1,0,0),vec3(0,1,0),vec3(0,0,1),vec3(0,1,1),vec3(1,1,1),
-        vec3(1,1,0),vec3(1,0,1),vec3(.9,0,.9),vec3(.8,0,.8),vec3(.7,0,.7),vec3(0,0,0),
-        vec3(.5,0,.5),vec3(.5,.5,0),vec3(0,.5,.5),vec3(1,.5,0),vec3(.5,.25,0),
-        vec3(.8,.2,.2),vec3(.2,.8,.4),vec3(.3,.3,.8));
-    vec3 cornerColors[8] = vec3[](vec3(.2,.3,.5),vec3(.25,.35,.55),vec3(.5,.2,.3),vec3(.55,.25,.35),
-        vec3(.3,.5,.2),vec3(.35,.55,.25),vec3(.4,.3,.4),vec3(.45,.35,.45));
+    // MORE SATURATED color palettes (increased color intensity)
+    vec3 triColors[19] = vec3[](
+        vec3(1.0, 0.15, 0.2),    // vivid red
+        vec3(0.1, 0.95, 0.4),    // vivid green
+        vec3(0.15, 0.35, 1.0),   // vivid blue
+        vec3(0.0, 0.95, 0.95),   // vivid cyan
+        vec3(0.95, 0.95, 0.98),  // white (keep neutral)
+        vec3(1.0, 0.9, 0.0),     // vivid yellow
+        vec3(1.0, 0.2, 0.9),     // vivid magenta
+        vec3(0.95, 0.15, 0.85),  // vivid pink
+        vec3(0.85, 0.1, 0.75),   // vivid pink 2
+        vec3(0.75, 0.08, 0.65),  // vivid purple-pink
+        vec3(0.08, 0.08, 0.12),  // dark (keep)
+        vec3(0.65, 0.1, 0.7),    // vivid purple
+        vec3(0.75, 0.65, 0.0),   // vivid olive/gold
+        vec3(0.0, 0.6, 0.65),    // vivid teal
+        vec3(1.0, 0.5, 0.0),     // vivid orange
+        vec3(0.75, 0.35, 0.0),   // vivid brown/orange
+        vec3(1.0, 0.2, 0.3),     // vivid coral
+        vec3(0.2, 0.95, 0.5),    // vivid sea green
+        vec3(0.35, 0.4, 1.0)     // vivid slate blue
+    );
+    
+    vec3 cornerColors[8] = vec3[](
+        vec3(0.15, 0.35, 0.7),   // saturated blue
+        vec3(0.2, 0.45, 0.8),
+        vec3(0.7, 0.2, 0.35),    // saturated red
+        vec3(0.8, 0.25, 0.4),
+        vec3(0.3, 0.7, 0.2),     // saturated green
+        vec3(0.35, 0.8, 0.3),
+        vec3(0.55, 0.35, 0.6),   // saturated purple
+        vec3(0.65, 0.4, 0.7)
+    );
     
     // Triangles
     vec2 tri[57] = vec2[](
@@ -106,71 +183,246 @@ void main() {
         p += l * ray; totalDist += l;
     }
     
-    // Normal
-    const float s = 0.015625;
-    vec3 normal = normalize(vec3(objec(p+vec3(s,0,0),uv).x-l, objec(p+vec3(0,s,0),uv).x-l, objec(p+vec3(0,0,s),uv).x-l));
+    // Improved normals with central differences
+    const float eps = 0.01;
+    vec3 normal = normalize(vec3(
+        objec(p + vec3(eps,0,0), uv).x - objec(p - vec3(eps,0,0), uv).x,
+        objec(p + vec3(0,eps,0), uv).x - objec(p - vec3(0,eps,0), uv).x,
+        objec(p + vec3(0,0,eps), uv).x - objec(p - vec3(0,0,eps), uv).x
+    ));
     
-    // Triangle coloring
-    vec3 col = vec3(1.0);
-    float cs = 2.75, t1=abs(cos(iTime/cs)), t2=abs(sin(iTime/cs)), t3=abs(sin(iTime*.5));
+    // ============== TRIANGLE COLORING WITH GRID LINES ==============
+    vec3 col = vec3(0.05);
+    float cs = 2.75;
+    float t1 = abs(cos(iTime / cs));
+    float t2 = abs(sin(iTime / cs));
+    float t3 = abs(sin(iTime * 0.5));
+    
+    // ====== BARYCENTRIC CORNER DARKENING SETTINGS ======
+    float cornerDarknessAmount = 0.05;  // How dark corners get (0.0 = black, 1.0 = no darkening)
+    float cornerFalloffStart = 0.4;     // Where darkening starts (0.33 = from center, higher = only near corners)
+    float cornerFalloffEnd = 0.95;      // Where max darkness is reached
+    float cornerPower = 2.0;            // Falloff curve (higher = sharper transition)
     
     for (int i = 0; i < TRI_SIZE; i++) {
         vec2 p1=tri[i*3], p2=tri[i*3+1], p3=tri[i*3+2];
         if (pointInTriangle(uv, p1, p2, p3)) {
             col = triColors[i];
-            float dt=abs(uv.y-p1.y), dl=abs(uv.x-p2.x), dr=abs(uv.x-p3.x);
-            float rl=fract(atan(uv.x-p2.x,uv.y-p2.y)*11.3), rr=fract(atan(uv.x-p3.x,uv.y-p3.y)*5.3);
-            float rv=fract(atan(uv.x-p1.x,uv.y-p1.y)*6.3);
-            if(min(rl,1.-rl)<.05||min(rr,1.-rr)<.05||min(rv,1.-rv)<.05) col=mix(vec3(1),vec3(0),dt);
-            col=mix(col,vec3(t1),dr-dl); col=mix(col,vec3(t2),dt-dl-dr); col=mix(col/1.72,vec3(t3),dt-dr-dl*.4);
             
+            // === ORIGINAL GRID LINES ===
+            float dt = abs(uv.y - p1.y);
+            float dl = abs(uv.x - p2.x);
+            float dr = abs(uv.x - p3.x);
+            
+            float rl = fract(atan(uv.x - p2.x, uv.y - p2.y) * 11.3);
+            float rr = fract(atan(uv.x - p3.x, uv.y - p3.y) * 5.3);
+            float rv = fract(atan(uv.x - p1.x, uv.y - p1.y) * 6.3);
+            
+            // Radial grid lines
+            if (min(rl, 1.0 - rl) < 0.05 || min(rr, 1.0 - rr) < 0.05 || min(rv, 1.0 - rv) < 0.05) {
+                col = mix(vec3(1.0), vec3(0.0), dt);
+            }
+            
+            // Color mixing based on position
+            col = mix(col, vec3(t1), dr - dl);
+            col = mix(col, vec3(t2), dt - dl - dr);
+            col = mix(col / 1.72, vec3(t3), dt - dr - dl * 0.4);
+            
+            // ====== BARYCENTRIC CORNER DARKENING ======
+            // Get barycentric coordinates: each component is 0-1, sum to 1
+            // At center: all ~0.33, at corners: one is ~1.0, others ~0.0
             vec3 bary = getBarycentricCoords(uv, p1, p2, p3);
-            float cornerProximity = smoothstep(0.33, 1.0, max(bary.x, max(bary.y, bary.z)));
-            col *= mix(1.0, 0.3, pow(cornerProximity, 2.0));
+            
+            // Max barycentric coord: 0.33 at center, 1.0 at corners
+            float maxBary = max(bary.x, max(bary.y, bary.z));
+            
+            // Map to darkening: 0 at center, 1 at corners
+            float cornerProximity = smoothstep(cornerFalloffStart, cornerFalloffEnd, maxBary);
+            cornerProximity = pow(cornerProximity, cornerPower);
+            
+            // Apply darkening: multiply by 1.0 at center, cornerDarknessAmount at corners
+            float darkenFactor = mix(1.0, cornerDarknessAmount, cornerProximity);
+            col *= darkenFactor;
+            
+            // Boost saturation per-triangle
+            col = adjustSaturation(col, 0.6);
         }
     }
+    
     for (int i = 0; i < CORNER_SIZE; i++) {
         vec2 p1=cornerTri[i*3], p2=cornerTri[i*3+1], p3=cornerTri[i*3+2];
         if (pointInTriangle(uv, p1, p2, p3)) {
             col = cornerColors[i];
-            float dt=abs(uv.y-p1.y), dl=abs(uv.x-p2.x), dr=abs(uv.x-p3.x);
-            float rl=fract(atan(uv.x-p2.x,uv.y-p2.y)*11.3), rr=fract(atan(uv.x-p3.x,uv.y-p3.y)*5.3);
-            float rv=fract(atan(uv.x-p1.x,uv.y-p1.y)*6.3);
-            if(min(rl,1.-rl)<.05||min(rr,1.-rr)<.05||min(rv,1.-rv)<.05) col=mix(vec3(1),vec3(0),dt);
-            col=mix(col*2.,vec3(t1),dr-dl); col=mix(col/1.2,vec3(t2),dt-dl-dr); col=mix(col/1.72,vec3(t2),dt-dr-dl*.4);
             
+            // === ORIGINAL GRID LINES ===
+            float dt = abs(uv.y - p1.y);
+            float dl = abs(uv.x - p2.x);
+            float dr = abs(uv.x - p3.x);
+            
+            float rl = fract(atan(uv.x - p2.x, uv.y - p2.y) * 11.3);
+            float rr = fract(atan(uv.x - p3.x, uv.y - p3.y) * 5.3);
+            float rv = fract(atan(uv.x - p1.x, uv.y - p1.y) * 6.3);
+            
+            // Radial grid lines
+            if (min(rl, 1.0 - rl) < 0.05 || min(rr, 1.0 - rr) < 0.05 || min(rv, 1.0 - rv) < 0.05) {
+                col = mix(vec3(1.0), vec3(0.0), dt);
+            }
+            
+            // Color mixing based on position
+            col = mix(col * 2.0, vec3(t1), dr - dl);
+            col = mix(col / 1.2, vec3(t2), dt - dl - dr);
+            col = mix(col / 1.72, vec3(t2), dt - dr - dl * 0.4);
+            
+            // ====== BARYCENTRIC CORNER DARKENING ======
             vec3 bary = getBarycentricCoords(uv, p1, p2, p3);
-            float cornerProximity = smoothstep(0.33, 1.0, max(bary.x, max(bary.y, bary.z)));
-            col *= mix(1.0, 0.3, pow(cornerProximity, 2.0));
+            float maxBary = max(bary.x, max(bary.y, bary.z));
+            float cornerProximity = smoothstep(cornerFalloffStart, cornerFalloffEnd, maxBary);
+            cornerProximity = pow(cornerProximity, cornerPower);
+            float darkenFactor = mix(1.0, cornerDarknessAmount, cornerProximity);
+            col *= darkenFactor;
+            
+            // Boost saturation per-triangle
+            col = adjustSaturation(col, 1.3);
         }
     }
     
-    // Final shading
-    float lighting = dot(normal, normalize(vec3(1,1,-1)))*.5+.5;
+    // ============== ENHANCED 3D LIGHTING ==============
+    vec3 lightDir = normalize(vec3(0.8, 0.6, -0.5));
+    vec3 lightDir2 = normalize(vec3(-0.5, 0.3, 0.7));
+    vec3 lightCol = vec3(1.0, 0.95, 0.85);
+    vec3 lightCol2 = vec3(0.4, 0.5, 0.7);
+    vec3 ambientCol = vec3(0.15, 0.18, 0.25);
+    
     float objectVisible = smoothstep(0.1, 0.01, l);
-    float lum = getLuminance(col), cf = 1.-lum;
+    float lum = getLuminance(col);
+    float cf = 1.0 - lum;
     
-    float cornerDist = hitIdx>=0 ? distanceToTriangleVertices(uv,hitP1,hitP2,hitP3) : 1000.0;
-    float dm = 1.0 - max(pow(1.-smoothstep(0.,.08,g_globalEdgeDist),1.5), pow(1.-smoothstep(0.,.12,cornerDist),1.2)) * .7;
+    // Edge/corner darkening
+    float cornerDist = hitIdx >= 0 ? distanceToTriangleVertices(uv, hitP1, hitP2, hitP3) : 1000.0;
+    float dm = 1.0 - max(pow(1.0 - smoothstep(0.0, 0.08, g_globalEdgeDist), 1.5), 
+                         pow(1.0 - smoothstep(0.0, 0.12, cornerDist), 1.2)) * 0.7;
     
-    vec3 lightDir = normalize(vec3(1,1,-1));
-    float rim = pow(1.-max(0.,dot(normal,-ray)),3.);
+    // Lighting calculations
+    float diff = max(0.0, dot(normal, lightDir));
+    float diff2 = max(0.0, dot(normal, lightDir2)) * 0.4;
+    vec3 halfVec = normalize(lightDir - ray);
+    float spec = pow(max(0.0, dot(normal, halfVec)), 64.0);
+    float fresnel = pow(1.0 - max(0.0, dot(normal, -ray)), 4.0);
+    float rim = pow(1.0 - max(0.0, dot(normal, -ray)), 3.0);
+    
+    // AO and shadows
+    float ao = calcAO(p, normal, uv);
+    float shadow = softShadow(p + normal * 0.05, lightDir, 0.1, 40.0, 12.0, uv);
+    
+    // Fog (more saturated)
+    vec3 fogCol = vec3(0.55, 0.7, 0.9);
+    float fogAmount = 1.0 - exp(-totalDist * 0.008);
+    
     vec3 finalColor;
     
+    // ====== 3D OBJECT DARKENING FACTOR ======
+    float objDarken = 0.5;
+    
     if (objectID > 1.5) {
-        vec3 sc = vec3(.3,.4,.6)*lighting + vec3(.1,.05,.15)*sin(p.x*.2+p.z*.3) + (cf-.5)*.4;
-        sc = clamp(sc,0.,1.); sc = mix(sc*col*8., mix(vec3(.4,.5,.7),vec3(.8,.85,1.),cf)*col*8., rim*.5);
-        finalColor = sc * dm;
+        // SKY (more saturated)
+        vec3 skyTop = vec3(0.2, 0.4, 0.85);
+        vec3 skyHorizon = vec3(0.65, 0.8, 1.0);
+        vec3 skyBottom = vec3(0.95, 0.7, 0.5);
+        
+        float skyGrad = ray.y * 0.5 + 0.5;
+        vec3 skyCol = mix(skyBottom, mix(skyHorizon, skyTop, smoothstep(0.3, 0.8, skyGrad)), smoothstep(0.0, 0.4, skyGrad));
+        
+        // Sun glow (warmer/more saturated)
+        float sunDot = max(0.0, dot(ray, lightDir));
+        skyCol += vec3(1.0, 0.7, 0.2) * pow(sunDot, 32.0) * 0.6;
+        skyCol += vec3(1.0, 0.85, 0.6) * pow(sunDot, 4.0) * 0.25;
+        
+        // Subtle clouds
+        float clouds = sin(p.x * 0.02 + iTime * 0.1) * sin(p.z * 0.03) * 0.5 + 0.5;
+        skyCol = mix(skyCol, vec3(0.95), clouds * 0.15 * smoothstep(0.4, 0.8, skyGrad));
+        
+        vec3 sc = vec3(0.3, 0.4, 0.6) * (diff * 0.5 + 0.5) + vec3(0.1, 0.05, 0.15) * sin(p.x * 0.2 + p.z * 0.3) + (cf - 0.5) * 0.4;
+        sc = clamp(sc, 0.0, 1.0);
+        sc = mix(sc * col * 8.0, mix(vec3(0.4, 0.5, 0.7), vec3(0.8, 0.85, 1.0), cf) * col * 8.0, rim * 0.5);
+        finalColor = mix(skyCol, sc, 0.3) * dm;
+        
+        finalColor = adjustSaturation(finalColor, 1.3);
+        finalColor *= objDarken;
+        
     } else if (objectID > 0.5) {
-        vec3 tc = clamp(vec3(.4,.3,.2)*lighting + (cf-.5)*.6, 0.,1.);
-        tc = mix(tc*col*10., mix(vec3(.2),vec3(.8),cf)*col*10., rim*.4*col*10.);
-        finalColor = tc * dm;
+        // GROUND (more saturated)
+        vec3 groundCol = vec3(0.4, 0.25, 0.15);
+        vec3 grassCol = vec3(0.2, 0.45, 0.12);
+        
+        float grassAmount = smoothstep(0.7, 0.95, normal.y);
+        vec3 terrainCol = mix(groundCol, grassCol, grassAmount);
+        
+        vec3 tc = clamp(vec3(0.4, 0.3, 0.2) * (diff * shadow * 0.7 + 0.3) + (cf - 0.5) * 0.6, 0.0, 1.0);
+        tc = mix(tc * col * 10.0, mix(vec3(0.2), vec3(0.8), cf) * col * 10.0, rim * 0.4 * col * 10.0);
+        
+        vec3 lit = terrainCol * (ambientCol * ao + lightCol * diff * shadow + lightCol2 * diff2);
+        lit += vec3(0.02) * fresnel;
+        
+        finalColor = mix(lit, tc, 0.5) * col * 2.0 * dm;
+        
+        finalColor = adjustSaturation(finalColor, 1.25);
+        finalColor *= objDarken;
+        
     } else {
-        float diff = max(0.,dot(normal,lightDir));
-        vec3 sf = clamp(sphereColor+(.5-lum)*.5,.1,.9) * (.3+diff*.7);
-        sf = clamp(sf + vec3(.3)*pow(max(dot(-ray,reflect(-lightDir,normal)),0.),32.),0.,1.);
-        finalColor = sf * dm;
+        // OBJECTS (houses, cubes, arches)
+        vec3 objCol = sphereColor;
+        
+        // Micro detail
+        float detail = sin(p.x * 5.0) * sin(p.y * 5.0) * sin(p.z * 5.0) * 0.05;
+        objCol += detail;
+        
+        // Original sphere shading
+        vec3 sf = clamp(sphereColor + (0.5 - lum) * 0.5, 0.1, 0.9) * (0.3 + diff * 0.7);
+        sf = clamp(sf + vec3(0.3) * pow(max(dot(-ray, reflect(-lightDir, normal)), 0.0), 32.0), 0.0, 1.0);
+        
+        // Enhanced lighting
+        vec3 ambient = ambientCol * objCol * ao;
+        vec3 diffuse = lightCol * objCol * diff * shadow;
+        vec3 diffuse2 = lightCol2 * objCol * diff2;
+        vec3 specular = lightCol * spec * 0.5;
+        vec3 rimLight = vec3(0.2, 0.25, 0.35) * fresnel * 0.6;
+        
+        finalColor = mix(sf, ambient + diffuse + diffuse2 + specular + rimLight, 0.6) * dm;
+        
+        finalColor = adjustSaturation(finalColor, 1.35);
+        finalColor *= objDarken;
     }
     
-    fragColor = vec4(mix(col, finalColor, objectVisible), 1.0);
+    // Apply fog (not to sky) - also darkened
+    if (objectID < 1.5) {
+        finalColor = mix(finalColor, fogCol * objDarken, fogAmount * 0.6);
+    }
+    
+    // Blend 2D triangles with 3D scene
+    vec3 blended = mix(col, finalColor, objectVisible);
+    
+    // ============== POST-PROCESSING ==============
+    
+    // Global saturation boost
+    blended = adjustSaturation(blended, 1.35);
+    
+    // Vignette
+    vec2 vigUV = uv * (1.0 - uv);
+    float vig = pow(vigUV.x * vigUV.y * 16.0, 0.25);
+    blended *= mix(0.7, 1.0, vig);
+    
+    // Color grading (slightly more contrast for vibrance)
+    blended = pow(blended, vec3(0.92, 0.98, 1.08));
+    
+    // ACES tone mapping
+    blended = aces(blended);
+    
+    // Gamma correction
+    blended = pow(blended, vec3(1.0 / 2.2));
+    
+    // Subtle film grain
+    float grain = hash(uv.x * 1000.0 + uv.y * 1000.0 + iTime) * 0.03;
+    blended += grain - 0.015;
+    
+    fragColor = vec4(clamp(blended, 0.0, 1.0), 1.0);
 }

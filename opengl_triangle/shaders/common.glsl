@@ -125,7 +125,7 @@ float sdHouse(vec3 p, float size, vec2 uv) {
     return min(min(roof1, roof2), min(chimney, max(max(walls, -door), -windows)));
 }
 
-// Scene
+// ============== SCENE - FIXED WORLD POSITIONS ==============
 vec2 objec(vec3 p, vec2 uv) {
     float ground = sin(p.x * 0.5) * 2.0 + sin(p.z * 0.5) * 2.0 + p.y + 50.0;
     float sky = 90.0 - p.y + sin(p.x * 0.3) * 3.0 + sin(p.z * 0.4) * 3.0 + sin(p.x * 0.7 + p.z * 0.5) * 2.0;
@@ -134,11 +134,21 @@ vec2 objec(vec3 p, vec2 uv) {
     if (sky < minDist) { minDist = sky; objectID = 2.0; }
     
     float baseSize = 5.0 * clamp(g_triArea * 10.0, 0.3, 2.0);
-    const float zBase = 20.0, spreadX = 100.0, spreadZ = 50.0;
     
+    // FIXED world center - objects stay here, camera moves freely
+    vec3 worldCenter = vec3(0.0, 0.0, 20.0);
+    
+    // Circle radii
+    float radius1 = 40.0;   // Inner ring (houses)
+    float radius2 = 80.0;   // Outer ring (cubes)
+    
+    // HOUSES - fixed circle around world center
     for (int i = 0; i < NUM_HOUSES; i++) {
+        float angle = float(i) * 6.28318 / float(NUM_HOUSES);
         float fi = float(i) * 17.31 + 24691.2;
-        vec3 hPos = vec3((float(i) - 1.5) * 25.0 + (hash(fi) - 0.5) * 10.0, 0.0, zBase + hash(fi * 2.4) * 15.0);
+        float r = radius1 + hash(fi) * 20.0;
+        
+        vec3 hPos = worldCenter + vec3(cos(angle) * r, 0.0, sin(angle) * r);
         float hSize = max(baseSize * (0.9 + hash(fi * 3.5) * 0.3) * 3.0, 8.0);
         float ang = hash(fi * 5.1) * 6.28;
         vec3 hp = p - hPos;
@@ -147,9 +157,14 @@ vec2 objec(vec3 p, vec2 uv) {
         if (d < minDist) { minDist = d; objectID = 0.0; }
     }
     
+    // CUBES - fixed outer ring
     for (int i = 0; i < NUM_CUBES; i++) {
+        float angle = float(i) * 6.28318 / float(NUM_CUBES) + 0.3;
         float fi = float(i) * 19.43 + 36923.4;
-        vec3 cPos = vec3((hash(fi) - 0.5) * spreadX, hash(fi * 1.5) * 25.0 + 8.0, zBase + (hash(fi * 2.5) - 0.5) * spreadZ);
+        float r = radius2 + (hash(fi) - 0.5) * 30.0;
+        float height = hash(fi * 1.5) * 25.0 + 8.0;
+        
+        vec3 cPos = worldCenter + vec3(cos(angle) * r, height, sin(angle) * r);
         float cSize = baseSize * (0.6 + hash(fi * 3.7) * 0.8);
         vec3 cp = p - cPos;
         float a1 = hash(fi * 1.7) * 6.28, a2 = hash(fi * 2.3) * 6.28;
@@ -159,12 +174,16 @@ vec2 objec(vec3 p, vec2 uv) {
         if (d < minDist) { minDist = d; objectID = 0.0; }
     }
     
+    // ARCHES - fixed middle ring
     for (int i = 0; i < NUM_ARCHES; i++) {
+        float angle = float(i) * 6.28318 / float(NUM_ARCHES) + 1.0;
         float fi = float(i) * 27.83 + 48571.6;
-        vec3 aPos = vec3((hash(fi) - 0.5) * spreadX, 0.0, zBase + (hash(fi * 2.1) - 0.5) * spreadZ);
+        float r = (radius1 + radius2) * 0.5 + (hash(fi) - 0.5) * 25.0;
+        
+        vec3 aPos = worldCenter + vec3(cos(angle) * r, 0.0, sin(angle) * r);
         float aSize = baseSize * (0.8 + hash(fi * 3.5) * 0.4) * 1.5;
         vec3 ap = p - aPos;
-        float ang = hash(fi * 2.8) * 3.14159;
+        float ang = angle + 1.57;
         ap.xz = vec2(ap.x * cos(ang) - ap.z * sin(ang), ap.x * sin(ang) + ap.z * cos(ang));
         float d = min(sdBox(ap - vec3(-aSize, aSize * 0.8, 0.0), vec3(aSize * 0.2, aSize * 0.8, aSize * 0.2), uv),
                   min(sdBox(ap - vec3(aSize, aSize * 0.8, 0.0), vec3(aSize * 0.2, aSize * 0.8, aSize * 0.2), uv),
