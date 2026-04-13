@@ -15,9 +15,7 @@ vec3 g_triColor; // The color of the current triangle
 float g_triArea, g_globalEdgeDist; // How big the triangle is, and how far we are from its edges
 
 // Constants
-const int NUM_HOUSES = 4; // We'll draw 4 houses in a circle
-const int NUM_CUBES = 5; // We'll draw 5 floating cubes in a circle
-const int NUM_ARCHES = 3; // We'll draw 3 archways in a circle
+const int NUM_HOUSES = 5; // SDF houses in a ring around spawn
 const int TRI_SIZE = 19; // (unused but defined)
 const int CORNER_SIZE = 8; // (unused but defined)
 
@@ -133,63 +131,21 @@ vec2 objec(vec3 p, vec2 uv) { // Find distance to nearest object and which objec
     float minDist = ground, objectID = 1.0; // Start with ground as nearest (ID=1 for ground)
     if (sky < minDist) { minDist = sky; objectID = 2.0; } // If sky is closer, use that (ID=2 for sky)
     
-    float baseSize = 5.0 * clamp(g_triArea * 10.0, 0.3, 2.0); // Base object size scaled by triangle area
-    
-    // FIXED world center - objects stay here, camera moves freely
-    vec3 worldCenter=vec3(0.0, 0.0, 20.0); // Starting center point of object arrangement
-    // Circle radii
-    float radius1 = 40.0;   // Inner ring (houses)
-    float radius2 = 80.0;   // Outer ring (cubes)
-    for (int j = 0 ; j<3; j++) { // Make the world center orbit in a circle over time
-        worldCenter += vec3(cos(iTime * 0.2 + float(j) * 2.094) * 20.0, 0.0, sin(iTime * 0.2 + float(j) * 2.094) * 20.0); // Add circular motion offset
-    }
-    // HOUSES - fixed circle around world center
-    for (int i = 0; i < NUM_HOUSES; i++) { // Loop through each house
-        float angle = float(i) * 6.28318 / float(NUM_HOUSES); // Evenly space houses in a circle (2π / number of houses)
-        float fi = float(i) * 17.31 + 24691.2; // Unique seed for this house (for randomization)
-        float r = radius1 + hash(fi) * 20.0; // Radius with random variation
-        
-        vec3 hPos = worldCenter + vec3(cos(angle) * r, 0.0, sin(angle) * r); // Position house in circle around world center
-        float hSize = max(baseSize * (0.9 + hash(fi * 3.5) * 0.3) * 3.0, 8.0); // Random house size (at least 8 units)
-        float ang = hash(fi * 5.1) * 6.28; // Random rotation angle for the house
-        vec3 hp = p - hPos; // Point relative to house position
-        hp.xz = vec2(hp.x * cos(ang) - hp.z * sin(ang), hp.x * sin(ang) + hp.z * cos(ang)); // Rotate point around Y axis
-        float d = sdHouse(hp, hSize, uv); // Get distance to this house
-        if (d < minDist) { minDist = d; objectID = 0.0; } // If this house is closest, update (ID=0 for objects)
-    }
-    
-    // CUBES - fixed outer ring
-    for (int i = 0; i < NUM_CUBES; i++) { // Loop through each cube
-        float angle = float(i) * 6.28318 / float(NUM_CUBES) + 0.3; // Evenly space cubes in circle, offset by 0.3 radians
-        float fi = float(i) * 19.43 + 36923.4; // Unique seed for this cube
-        float r = radius2 + (hash(fi) - 0.5) * 30.0; // Outer radius with random variation
-        float height = hash(fi * 1.5) * 25.0 + 8.0; // Random height above ground
-        
-        vec3 cPos = worldCenter + vec3(cos(angle) * r, height, sin(angle) * r); // Position cube in outer circle, elevated
-        float cSize = baseSize * (0.6 + hash(fi * 3.7) * 0.8); // Random cube size
-        vec3 cp = p - cPos; // Point relative to cube position
-        float a1 = hash(fi * 1.7) * 6.28, a2 = hash(fi * 2.3) * 6.28; // Two random rotation angles
-        cp.xy = vec2(cp.x * cos(a1) - cp.y * sin(a1), cp.x * sin(a1) + cp.y * cos(a1)); // Rotate around Z axis
-        cp.xz = vec2(cp.x * cos(a2) - cp.z * sin(a2), cp.x * sin(a2) + cp.z * cos(a2)); // Rotate around Y axis
-        float d = sdBox(cp, vec3(cSize), uv); // Get distance to this cube
-        if (d < minDist) { minDist = d; objectID = 0.0; } // If this cube is closest, update
-    }
-    
-    // ARCHES - fixed middle ring
-    for (int i = 0; i < NUM_ARCHES; i++) { // Loop through each arch
-        float angle = float(i) * 6.28318 / float(NUM_ARCHES) + 1.0; // Evenly space arches, offset by 1 radian
-        float fi = float(i) * 27.83 + 48571.6; // Unique seed for this arch
-        float r = (radius1 + radius2) * 0.5 + (hash(fi) - 0.5) * 25.0; // Middle radius between inner and outer rings, with variation
-        
-        vec3 aPos = worldCenter + vec3(cos(angle) * r, 0.0, sin(angle) * r); // Position arch in middle circle
-        float aSize = baseSize * (0.8 + hash(fi * 3.5) * 0.4) * 1.5; // Random arch size
-        vec3 ap = p - aPos; // Point relative to arch position
-        float ang = angle + 1.57; // Rotate arch to face outward (+ π/2)
-        ap.xz = vec2(ap.x * cos(ang) - ap.z * sin(ang), ap.x * sin(ang) + ap.z * cos(ang)); // Rotate around Y axis
-        float d = min(sdBox(ap - vec3(-aSize, aSize * 0.8, 0.0), vec3(aSize * 0.2, aSize * 0.8, aSize * 0.2), uv), // Left pillar
-                  min(sdBox(ap - vec3(aSize, aSize * 0.8, 0.0), vec3(aSize * 0.2, aSize * 0.8, aSize * 0.2), uv), // Right pillar
-                      sdBox(ap - vec3(0.0, aSize * 1.8, 0.0), vec3(aSize * 1.4, aSize * 0.2, aSize * 0.25), uv))); // Top beam, combine all three with min
-        if (d < minDist) { minDist = d; objectID = 0.0; } // If this arch is closest, update
+    // Ring of SDF houses around initial camera (buffer 0,0,0 + offset in image.frag)
+    vec3 worldAnchor = vec3(0.0, 16.0, -64.0);
+    float orbitR = 40.0;
+    float baseSize = 5.0 * clamp(g_triArea * 10.0, 0.3, 2.0);
+
+    for (int i = 0; i < NUM_HOUSES; i++) {
+        float ringAng = float(i) * 6.2831853 / float(NUM_HOUSES);
+        vec3 hPos = worldAnchor + vec3(cos(ringAng) * orbitR, 0.0, sin(ringAng) * orbitR);
+        float fi = float(i) * 17.31 + 24691.2;
+        float hSize = max(baseSize * (0.9 + hash(fi * 3.5) * 0.3) * 3.0, 8.0);
+        float yaw = hash(fi * 5.1) * 6.2831853;
+        vec3 hp = p - hPos;
+        hp.xz = vec2(hp.x * cos(yaw) - hp.z * sin(yaw), hp.x * sin(yaw) + hp.z * cos(yaw));
+        float d = sdHouse(hp, hSize, uv);
+        if (d < minDist) { minDist = d; objectID = 0.0; }
     }
     
     return vec2(minDist, objectID); // Return distance to nearest object and its ID

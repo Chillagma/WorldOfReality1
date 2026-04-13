@@ -54,28 +54,13 @@ float distToTriangleEdges(vec2 p, vec2 a, vec2 b, vec2 c) {
     return min(d1, min(d2, d3));
 }
 
+// Disabled: each step called objec() (mesh × tris) — was the main source of lag
 float softShadow(vec3 ro, vec3 rd, float mint, float maxt, float k, vec2 uv) {
-    float res = 1.0;
-    float t = mint;
-    for(int i = 0; i < 16; i++) {
-        float h = objec(ro + rd * t, uv).x;
-        res = min(res, k * h / t);
-        t += clamp(h, 0.05, 0.5);
-        if(h < 0.001 || t > maxt) break;
-    }
-    return clamp(res, 0.0, 1.0);
+    return 1.0;
 }
 
 float calcAO(vec3 pos, vec3 nor, vec2 uv) {
-    float occ = 0.0;
-    float sca = 1.0;
-    for(int i = 0; i < 4; i++) {
-        float h = 0.02 + 0.1 * float(i);
-        float d = objec(pos + h * nor, uv).x;
-        occ += (h - d) * sca;
-        sca *= 0.9;
-    }
-    return clamp(1.0 - 2.5 * occ, 0.0, 1.0);
+    return 1.0;
 }
 
 void main() {
@@ -227,20 +212,26 @@ void main() {
     vec3 p = g_camPos;
     float l=0.0, totalDist=0.0, objectID=0.0;
     
-    for (int i = 0; i < 128; ++i) {
+    for (int i = 0; i < 24; ++i) {
         vec2 r = objec(p, uv);
         l = r.x; objectID = r.y;
-        if (l < 0.001 || totalDist > 150.0) break;
+        if (l < 0.001 || totalDist > 120.0) break;
         p += l * ray; totalDist += l;
     }
     
-    // Improved normals with central differences
-    const float eps = 0.01;
-    vec3 normal = normalize(vec3(
-        objec(p + vec3(eps,0,0), uv).x - objec(p - vec3(eps,0,0), uv).x,
-        objec(p + vec3(0,eps,0), uv).x - objec(p - vec3(0,eps,0), uv).x,
-        objec(p + vec3(0,0,eps), uv).x - objec(p - vec3(0,0,eps), uv).x
-    ));
+    // Mesh normals: forward differences (4× objec vs 6× central differences)
+    vec3 normal;
+    if (objectID < 0.5) {
+        const float eps = 0.012;
+        float c = objec(p, uv).x;
+        normal = normalize(vec3(
+            objec(p + vec3(eps, 0.0, 0.0), uv).x - c,
+            objec(p + vec3(0.0, eps, 0.0), uv).x - c,
+            objec(p + vec3(0.0, 0.0, eps), uv).x - c
+        ));
+    } else {
+        normal = vec3(0.0, 1.0, 0.0);
+    }
     
     // ============== TRIANGLE COLORING WITH GRID LINES ==============
     vec3 col = vec3(0.05);

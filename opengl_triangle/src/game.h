@@ -138,13 +138,19 @@ inline MatchResult calculateMatch(const CameraState& goal, const PlayerCamera& p
 
 // makes sure goals are looking at something interesting
 struct GoalGenerator {
-    // list of object positions in your scene
+    // Same ring as common.glsl: 5 houses around spawn (0,16,-64) at radius 40
     struct Vec3 { float x, y, z; };
-    std::vector<Vec3> objects = {
-        {0, 0, 5},    // object 1 position
-        {3, 0, -2},   // object 2 position
-        // ... add all your scene objects
-    };
+    std::vector<Vec3> objects = [] {
+        std::vector<Vec3> v;
+        constexpr float ax = 0.f, ay = 16.f, az = -64.f;
+        constexpr float r = 40.f;
+        constexpr int n = 5;
+        for (int i = 0; i < n; ++i) {
+            float a = static_cast<float>(i) * 6.2831853f / static_cast<float>(n);
+            v.push_back({ ax + std::cos(a) * r, ay, az + std::sin(a) * r });
+        }
+        return v;
+    }();
 
     // check if camera can see any objects
     bool isValidGoalPosition(const CameraState& cam) {
@@ -165,7 +171,7 @@ struct GoalGenerator {
             float dot = toObjX * cam.dirX + toObjY * cam.dirY + toObjZ * cam.dirZ;
 
             // if looking toward object (dot > 0.7) and close enough
-            if (dot > 0.7f && dist < 15.0f) {
+            if (dot > 0.7f && dist < 55.0f) {
                 return true;  // good goal!
             }
         }

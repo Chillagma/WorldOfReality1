@@ -308,6 +308,8 @@ int main() {
     app.goalThumbnail.setTargetRect(aspectRatio, App::THUMBNAIL_SIZE, App::MARGIN, true);   // Top-right
     app.playerThumbnail.setTargetRect(aspectRatio, App::THUMBNAIL_SIZE, App::MARGIN, false); // Top-left
     bool shouldCapture = false; // Flag for when to capture player's view
+    double fpsWindowStart = glfwGetTime();
+    int fpsFrameCount = 0;
 
     // === MAIN LOOP - Runs every frame until window closed ===
     while (!glfwWindowShouldClose(window)) {
@@ -453,6 +455,16 @@ int main() {
             }
         }
         glfwSwapBuffers(window); // Display everything we drew
+        fpsFrameCount++;
+        const double fpsNow = glfwGetTime();
+        if (fpsNow - fpsWindowStart >= 0.5) {
+            const double fps = static_cast<double>(fpsFrameCount) / (fpsNow - fpsWindowStart);
+            fpsFrameCount = 0;
+            fpsWindowStart = fpsNow;
+            char title[192];
+            std::snprintf(title, sizeof(title), "Camera Hunt — %.0f FPS (SPACE=check, R=new)", fps);
+            glfwSetWindowTitle(window, title);
+        }
     }
 
     // Cleanup - free all resources before exiting
