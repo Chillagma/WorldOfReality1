@@ -1,4 +1,4 @@
-﻿#version 330 core
+#version 330 core
 #define COMMON_INCLUDED
 out vec4 fragColor; // The final color we'll draw to the screen
 uniform sampler2D iChannel0; // A texture we can read from (like an image)
@@ -22,6 +22,88 @@ const int CORNER_SIZE = 8; // (unused but defined)
 // Utilities
 float hash(float n) { return fract(sin(n) * 43758.5453123); } // Random-looking number from any input number
 float getLuminance(vec3 c) { return dot(c, vec3(0.299, 0.587, 0.114)); } // How bright a color is (converts RGB to grayscale brightness)
+uniform sampler2D uMeshTex;
+uniform int uNumTris;
+uniform int uMeshTexWidth;
+
+uniform int uSdfRes;
+uniform int uSlicesPerRow;
+float sampleSDF(vec3 p) {
+    // p in [-0.5, 0.5]
+    vec3 uvw = clamp(p + 0.5, 0.0, 1.0); // remap to [0,1]
+
+    float zf  = uvw.z * float(uSdfRes - 1);
+    int   z0  = int(floor(zf));
+    int   z1  = min(z0 + 1, uSdfRes - 1);
+    float zfr = zf - float(z0);
+
+    // tile position in atlas
+    vec2 tile0 = vec2(float(z0 % uSlicesPerRow), float(z0 / uSlicesPerRow));
+    vec2 tile1 = vec2(float(z1 % uSlicesPerRow), float(z1 / uSlicesPerRow));
+
+    // total atlas dimensions in tiles
+    float atlasSize = float(uSlicesPerRow);
+
+    // uv within the tile + tile offset, divided by atlas size
+    vec2 uv0 = (tile0 + uvw.xy) / atlasSize;
+    vec2 uv1 = (tile1 + uvw.xy) / atlasSize;
+
+    float d0 = texture(uMeshTex, uv0).r;
+    float d1 = texture(uMeshTex, uv1).r;
+
+    return mix(d0, d1, zfr);
+}
+
+float sdSTL(vec3 p, float size, vec2 uv) {
+    float areaFactor      = clamp(1.0 / (g_triArea + 0.005), 1.0, 80.0);
+    float normalizedArea  = smoothstep(0.0, 40.0, areaFactor);
+    float screenDiag      = sqrt(1.0 + g_ar * g_ar);
+    float centerProximity = pow(clamp(g_globalEdgeDist / (screenDiag * 0.15), 0.0, 1.0), 0.125);
+
+    float scaleAmount = clamp(0.3 + centerProximity * 0.32, 0.001, 1.0);
+
+    float colorIntensity = (pow(g_triColor.r,0.5)*2.0
+                          + pow(g_triColor.g,0.5)*1.8
+                          + pow(g_triColor.b,0.5)*1.9) / 3.0;
+    float strength = 0.1 + normalizedArea*0.3 + colorIntensity*1.1;
+
+    vec2  triCenter  = (g_triP1 + g_triP2 + g_triP3) / 3.0;
+    float warpFactor = length(uv - triCenter) * (1.0 - centerProximity) * strength * 5.0;
+    float finalScale = max(scaleAmount * (1.0 - warpFactor * 0.5), 0.03);
+
+    // USE p DIRECTLY in world space — no camera projection
+    vec3 camP = p / (finalScale * size);
+
+    vec3 outsideVec = abs(camP) - 0.5;
+    float outsideDist = length(max(outsideVec, 0.0));
+
+    float d = sampleSDF(clamp(camP, -0.5, 0.5));
+    float signedDist = (d - 0.5) * 2.0;
+    float finalDist = signedDist + outsideDist;
+
+    return finalDist * finalScale * size;
+}
+vec3 getMeshVert(int i) {
+    int x = i % uMeshTexWidth;   // column
+    int y = i / uMeshTexWidth;   // row
+    return texelFetch(uMeshTex, ivec2(x, y), 0).xyz;
+}
+
+// distance from point to triangle in 3D
+float distToTri(vec3 p, vec3 a, vec3 b, vec3 c) {
+    vec3 ba = b - a, ca = c - a, pa = p - a;
+    float uu = dot(ba,ba), uv = dot(ba,ca), vv = dot(ca,ca);
+    float wu = dot(ba,pa), wv = dot(ca,pa);
+    float det = uu*vv - uv*uv;
+    float s = (vv*wu - uv*wv) / det;
+    float t = (uu*wv - uv*wu) / det;
+    s = clamp(s, 0.0, 1.0);
+    t = clamp(t, 0.0, 1.0);
+    if (s + t > 1.0) { s /= (s+t); t /= (s+t); }
+    vec3 closest = a + ba*s + ca*t;
+    return length(p - closest);
+}
+
 
 // Triangle functions
 float pointToSegmentDistance(vec2 p, vec2 a, vec2 b) { // How far is point p from the line between a and b?
@@ -100,6 +182,8 @@ float sdBox(vec3 p, vec3 b, vec2 uv) { // Custom box distance with special warpi
     return length(max(q, 0.0)) + min(max(q.x, max(q.y, q.z)), 0.0); // Distance to box surface
 }
 
+
+
 float sdHouse(vec3 p, float size, vec2 uv) { // Distance to a house shape made of boxes
     float wH = size * 0.8, wW = size * 0.7, wD = size * 0.6; // Wall dimensions: height, width, depth
     float walls = sdBox(p - vec3(0.0, wH * 0.5, 0.0), vec3(wW, wH * 0.5, wD), uv); // Main box for walls, centered at half-height
@@ -122,7 +206,66 @@ float sdHouse(vec3 p, float size, vec2 uv) { // Distance to a house shape made o
     
     return min(min(roof1, roof2), min(chimney, max(max(walls, -door), -windows))); // Combine: both roof panels, chimney, walls with door and windows subtracted (negative = cut out)
 }
+// 3D 5-pointed star SDF with the same distortion as sdBox
+float sdStar(vec3 p, float r, float h, vec2 uv) {
+    // --- same warp preamble as sdBox ---
+    float areaFactor = clamp(1.0 / (g_triArea + 0.005), 1.0, 80.0); // Smaller triangles = bigger factor
+    float normalizedArea = smoothstep(0.0, 40.0, areaFactor); // Convert area factor to smooth 0-1 range
+    float screenDiag = sqrt(1.0 + g_ar * g_ar); // Length of screen diagonal
+    float centerProximity = pow(clamp(g_globalEdgeDist / (screenDiag * 0.15), 0.0, 1.0), 0.125); // How close to triangle center? (0=edge, 1=center)
 
+    vec3 pPushed = p + g_camDir * (1.0 - centerProximity) * 35.0; // Push point away from camera if near triangle edges
+    float scaleAmount = clamp(0.3 + centerProximity * 0.32, 0.001, 1.0); // Scale smaller near edges, bigger near center
+
+    float colorIntensity = (pow(g_triColor.r, 0.5) * 2.0 + pow(g_triColor.g, 0.5) * 1.8 + pow(g_triColor.b, 0.5) * 1.9) / 3.0; // Brightness of triangle color
+    float strength = 0.1 + normalizedArea * 0.3 + colorIntensity * 1.1; // Warp strength based on triangle area and color
+
+    vec2 triCenter = (g_triP1 + g_triP2 + g_triP3) / 3.0; // Find center of current triangle
+    float warpFactor = length(uv - triCenter) * (1.0 - centerProximity) * strength * 5.0; // More warp farther from triangle center
+
+    float finalScale = max(scaleAmount * (1.0 - warpFactor * 0.5), 0.03); // Apply scale and warp, keep minimum size
+
+    // Transform into camera space (same as sdBox)
+    vec3 camP = vec3(dot(pPushed, g_camRight), dot(pPushed, g_camUp), dot(pPushed, g_camDir));
+
+    // Apply inverse scale so the star shrinks/grows with the warp
+    camP /= finalScale;
+
+    // --- 2D star cross-section in XY plane so the star stands upright ---
+    // Using XY instead of XZ means the star face points along Z (its thin axis)
+    vec2 q = camP.xy;
+    float a = atan(q.y, q.x); // Angle around Z axis
+    float seg = 6.2831853 / 5.0; // 72 degrees per segment
+    a = mod(a + seg * 0.5, seg) - seg * 0.5; // Fold into one wedge
+    q = length(q) * vec2(cos(a), abs(sin(a))); // Canonical wedge coords
+
+    // Inner radius ratio for the star (smaller = pointier)
+    float innerRatio = 0.42;
+    // Half-angle of one triangle tip
+    float halfSeg = seg * 0.5;
+
+    // Signed distance to the star outline in 2D
+    float d2 = q.x - r; // Outer circle clip
+
+    // Line from outer tip to inner notch
+    vec2 tipOuter = vec2(r, 0.0);
+    vec2 tipInner = vec2(cos(halfSeg) * r * innerRatio, sin(halfSeg) * r * innerRatio);
+    vec2 edge = tipInner - tipOuter;
+    vec2 w = q - tipOuter;
+    float t = clamp(dot(w, edge) / dot(edge, edge), 0.0, 1.0); // How far along the notch edge is the closest point?
+    float dEdge = length(w - edge * t); // Distance to that closest point on the notch edge
+    float side = sign(edge.x * w.y - edge.y * w.x); // Positive = outside the star edge
+    float star2D = side * dEdge; // Signed distance to star profile
+    star2D = max(star2D, d2); // Combine with outer circle clip
+
+    // Extrude along Z for thickness h (Z is now the thin axis since star face is in XY)
+    float dz = abs(camP.z) - h;
+    float exterior = length(max(vec2(star2D, dz), 0.0)); // Distance when outside both star and slab
+    float interior = min(max(star2D, dz), 0.0); // Distance when inside both (negative)
+    float dist = exterior + interior; // Final 3D extruded star distance
+
+    return dist * finalScale; // Undo the scale division to restore valid distance field
+}
 // ============== SCENE - FIXED WORLD POSITIONS ==============
 vec2 objec(vec3 p, vec2 uv) { // Find distance to nearest object and which object it is (returns distance, objectID)
     float ground = sin(p.x * 0.5) * 2.0 + sin(p.z * 0.5) * 2.0 + p.y + 50.0; // Wavy ground plane (y=-50 with waves)
@@ -131,21 +274,43 @@ vec2 objec(vec3 p, vec2 uv) { // Find distance to nearest object and which objec
     float minDist = ground, objectID = 1.0; // Start with ground as nearest (ID=1 for ground)
     if (sky < minDist) { minDist = sky; objectID = 2.0; } // If sky is closer, use that (ID=2 for sky)
     
-    // Ring of SDF houses around initial camera (buffer 0,0,0 + offset in image.frag)
+    // Ring of SDF stars around initial camera (buffer 0,0,0 + offset in image.frag)
     vec3 worldAnchor = vec3(0.0, 16.0, -64.0);
     float orbitR = 40.0;
     float baseSize = 5.0 * clamp(g_triArea * 10.0, 0.3, 2.0);
 
     for (int i = 0; i < NUM_HOUSES; i++) {
-        float ringAng = float(i) * 6.2831853 / float(NUM_HOUSES);
-        vec3 hPos = worldAnchor + vec3(cos(ringAng) * orbitR, 0.0, sin(ringAng) * orbitR);
-        float fi = float(i) * 17.31 + 24691.2;
-        float hSize = max(baseSize * (0.9 + hash(fi * 3.5) * 0.3) * 3.0, 8.0);
-        float yaw = hash(fi * 5.1) * 6.2831853;
-        vec3 hp = p - hPos;
-        hp.xz = vec2(hp.x * cos(yaw) - hp.z * sin(yaw), hp.x * sin(yaw) + hp.z * cos(yaw));
-        float d = sdHouse(hp, hSize, uv);
-        if (d < minDist) { minDist = d; objectID = 0.0; }
+        float ringAng = float(i) * 6.2831853 / float(NUM_HOUSES); // Evenly space stars around the ring
+        vec3 hPos = worldAnchor + vec3(cos(ringAng) * orbitR, 0.0, sin(ringAng) * orbitR); // Position on ring
+        float fi = float(i) * 17.31 + 24691.2; // Unique seed per star for random variation
+        float hSize = max(baseSize * (0.9 + hash(fi * 3.5) * 0.3) * 3.0, 8.0); // Random size, minimum 8
+        vec3 hp = p - hPos; // Point relative to star center
+
+        // Stand the star upright: rotate so XZ plane becomes XY plane
+        // i.e. swap Y and Z so the star stands like a sign post rather than lying flat
+        // Then rotate around Y axis to face outward from the ring center
+        float ca = cos(ringAng), sa = sin(ringAng); // Cosine and sine of ring angle for this star
+        // Reproject hp so X points along ring tangent, Y points up, Z points outward from ring center
+        vec3 outward = vec3(ca, 0.0, sa);           // Direction pointing away from ring center
+        vec3 tangent = vec3(-sa, 0.0, ca);          // Direction along the ring (perpendicular to outward)
+        vec3 up = vec3(0.0, 1.0, 0.0);             // World up so the star stands vertically
+        // Dot hp into this basis: star flat face points outward, star stands upright along Y
+        hp = vec3(dot(hp, tangent), dot(hp, up), dot(hp, outward));
+
+        // Stack vertically: shift only Y by i * boxHeight
+        vec3 stackOffset = vec3(0.0, float(i) * hSize, 0.0);
+
+        //float tower = sdBox(hp +stackOffset, vec3(hSize/4, hSize/4, hSize*4), uv);
+       //float d = tower;
+
+  //   float d = sdHouse(hp, hSize, uv);
+        vec3 starPos = vec3(0.0, 30.0, -64.0); // (kept for reference, unused since hp is already relative)
+      float starDist = sdStar(hp, 28.0, 1.0, uv); // r=28 radius, h=2 half-thickness
+      float d = starDist;
+//float d = sdSTL(hp, 55.0, uv);
+
+    
+        if (d < minDist) { minDist = d; objectID = 0.0; } // ID=0 for stars
     }
     
     return vec2(minDist, objectID); // Return distance to nearest object and its ID

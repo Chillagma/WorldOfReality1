@@ -18,7 +18,9 @@ float minEdgeDist(vec2 a, vec2 b, vec2 c, vec2 d) { return 0.0; }
 vec3 getBarycentricCoords(vec2 a, vec2 b, vec2 c, vec2 d) { return vec3(0); }
 vec2 rotate(vec2 a) { return vec2(0); }
 vec2 objec(vec3 a, vec2 b) { return vec2(0); }
-
+uniform sampler2D uMeshTex;
+uniform int uSdfRes;
+uniform int uSlicesPerRow;
 #endif
 
 // Camera override uniforms

@@ -13,7 +13,9 @@ uniform float uKeyD;
 uniform int uCameraOverride;
 uniform vec3 uCameraPosOverride;
 uniform vec2 uCameraRotOverride;
-
+uniform sampler2D uMeshTex;
+uniform int uSdfRes;
+uniform int uSlicesPerRow;
 void rotVec(inout vec4 v, float x, float y)
 {
     y = asin(v.y) - y;
