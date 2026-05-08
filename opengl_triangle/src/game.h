@@ -29,14 +29,16 @@ struct CameraState {
         if (len > 0.0001f) { dirX /= len; dirY /= len; dirZ /= len; }
     }
 
-    // pick a random position and direction
+    // pick a random position on orbit around center (outside ring) at same height
     void randomize(std::mt19937& rng) {
-        std::uniform_real_distribution<float> posDist(-8.0f, 8.0f);
-        std::uniform_real_distribution<float> yawDist(-PI, PI);
-        std::uniform_real_distribution<float> pitchDist(-0.5f, 0.5f);
-        posX = posDist(rng);
-        posY = posDist(rng) * 0.2f;   // Y is smaller so camera stays near ground
-        posZ = posDist(rng);
+        std::uniform_real_distribution<float> angleDist(-3.14159f, 3.14159f);
+        std::uniform_real_distribution<float> pitchDist(-1.2f, 1.2f);
+        std::uniform_real_distribution<float> yawDist(-3.14159f, 3.14159f);
+        float angle = angleDist(rng);
+        float radius = 50.0f + std::uniform_real_distribution<float>(0.0f, 15.0f)(rng);
+        posX = std::cos(angle) * radius;
+        posZ = std::sin(angle) * radius;
+        posY = 1.5f + std::uniform_real_distribution<float>(-2.0f, 3.0f)(rng);  // more height variation
         setFromAngles(pitchDist(rng), yawDist(rng));
     }
 };
@@ -46,8 +48,8 @@ struct PlayerCamera {
     float mouseX = 0.0f, mouseY = 0.0f, mouseDown = 0.0f;
     float dirX = 0.0f, dirY = 0.0f, dirZ = 1.0f;
     float posX = 0.0f, posY = 0.0f, posZ = 0.0f;
-
-    // put camera back at start
+    
+    // put camera back at start34
     void reset() {
         mouseX = mouseY = mouseDown = 0.0f;
         dirX = 0.0f; dirY = 0.0f; dirZ = 1.0f;
@@ -138,12 +140,12 @@ inline MatchResult calculateMatch(const CameraState& goal, const PlayerCamera& p
 
 // makes sure goals are looking at something interesting
 struct GoalGenerator {
-    // Same ring as common.glsl: 5 houses around spawn (0,16,-64) at radius 40
+    // Same ring: 5 houses around spawn (0,16,-64) at radius 12
     struct Vec3 { float x, y, z; };
     std::vector<Vec3> objects = [] {
         std::vector<Vec3> v;
         constexpr float ax = 0.f, ay = 16.f, az = -64.f;
-        constexpr float r = 40.f;
+        constexpr float r = 0.1f;
         constexpr int n = 5;
         for (int i = 0; i < n; ++i) {
             float a = static_cast<float>(i) * 6.2831853f / static_cast<float>(n);
@@ -152,26 +154,26 @@ struct GoalGenerator {
         return v;
     }();
 
-    // check if camera can see any objects
+// check if camera can see any objects
     bool isValidGoalPosition(const CameraState& cam) {
         for (auto& obj : objects) {
             // vector from camera to object
             float toObjX = obj.x - cam.posX;
             float toObjY = obj.y - cam.posY;
             float toObjZ = obj.z - cam.posZ;
-
+            
             // distance to object
             float dist = std::sqrt(toObjX * toObjX + toObjY * toObjY + toObjZ * toObjZ);
             if (dist < 0.1f) continue; // too close, skip
-
+            
             // normalize
             toObjX /= dist; toObjY /= dist; toObjZ /= dist;
-
-            // dot product = 1 means looking directly at it, 0 = perpendicular
+            
+            // dot product = 1 means looking directly at it
             float dot = toObjX * cam.dirX + toObjY * cam.dirY + toObjZ * cam.dirZ;
-
-            // if looking toward object (dot > 0.7) and close enough
-            if (dot > 0.7f && dist < 55.0f) {
+            
+            // more lenient: accept wider field of view
+            if (dot > 0.3f && dist < 70.0f) {
                 return true;  // good goal!
             }
         }

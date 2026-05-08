@@ -62,9 +62,9 @@ float sdSTL(vec3 p, float size, vec2 uv) {
 
     float scaleAmount = clamp(0.3 + centerProximity * 0.32, 0.001, 1.0);
 
-    float colorIntensity = (pow(g_triColor.r,0.5)*2.0
-                          + pow(g_triColor.g,0.5)*1.8
-                          + pow(g_triColor.b,0.5)*1.9) / 3.0;
+    float colorIntensity = (pow(g_triColor.r,0.5)*12.0
+                          + pow(g_triColor.g,0.5)*12.8
+                          + pow(g_triColor.b,0.5)*12.9) / 3.0;
     float strength = 0.1 + normalizedArea*0.3 + colorIntensity*1.1;
 
     vec2  triCenter  = (g_triP1 + g_triP2 + g_triP3) / 3.0;
@@ -89,19 +89,58 @@ vec3 getMeshVert(int i) {
     return texelFetch(uMeshTex, ivec2(x, y), 0).xyz;
 }
 
-// distance from point to triangle in 3D
-float distToTri(vec3 p, vec3 a, vec3 b, vec3 c) {
-    vec3 ba = b - a, ca = c - a, pa = p - a;
-    float uu = dot(ba,ba), uv = dot(ba,ca), vv = dot(ca,ca);
-    float wu = dot(ba,pa), wv = dot(ca,pa);
-    float det = uu*vv - uv*uv;
-    float s = (vv*wu - uv*wv) / det;
-    float t = (uu*wv - uv*wu) / det;
-    s = clamp(s, 0.0, 1.0);
-    t = clamp(t, 0.0, 1.0);
-    if (s + t > 1.0) { s /= (s+t); t /= (s+t); }
-    vec3 closest = a + ba*s + ca*t;
-    return length(p - closest);
+float distToTri(vec3 p, vec3 a, vec3 b, vec3 c)
+{
+    vec3 ab = b - a;
+    vec3 ac = c - a;
+    vec3 ap = p - a;
+
+    float d1 = dot(ab, ap);
+    float d2 = dot(ac, ap);
+    if (d1 <= 0.0 && d2 <= 0.0)
+        return length(ap); // Closest to vertex A
+
+    vec3 bp = p - b;
+    float d3 = dot(ab, bp);
+    float d4 = dot(ac, bp);
+    if (d3 >= 0.0 && d4 <= d3)
+        return length(bp); // Closest to vertex B
+
+    float vc = d1*d4 - d3*d2;
+    if (vc <= 0.0 && d1 >= 0.0 && d3 <= 0.0)
+    {
+        float v = d1 / (d1 - d3);
+        vec3 closest = a + v * ab;
+        return length(p - closest); // Closest on AB
+    }
+
+    vec3 cp = p - c;
+    float d5 = dot(ab, cp);
+    float d6 = dot(ac, cp);
+    if (d6 >= 0.0 && d5 <= d6)
+        return length(cp); // Closest to vertex C
+
+    float vb = d5*d2 - d1*d6;
+    if (vb <= 0.0 && d2 >= 0.0 && d6 <= 0.0)
+    {
+        float w = d2 / (d2 - d6);
+        vec3 closest = a + w * ac;
+        return length(p - closest); // Closest on AC
+    }
+
+    float va = d3*d6 - d5*d4;
+    if (va <= 0.0 && (d4 - d3) >= 0.0 && (d5 - d6) >= 0.0)
+    {
+        vec3 bc = c - b;
+        float w = (d4 - d3) / ((d4 - d3) + (d5 - d6));
+        vec3 closest = b + w * bc;
+        return length(p - closest); // Closest on BC
+    }
+
+    // Inside face region
+    vec3 n = cross(ab, ac);
+    float distance = abs(dot(ap, normalize(n)));
+    return distance;
 }
 
 
@@ -276,7 +315,7 @@ vec2 objec(vec3 p, vec2 uv) { // Find distance to nearest object and which objec
     
     // Ring of SDF stars around initial camera (buffer 0,0,0 + offset in image.frag)
     vec3 worldAnchor = vec3(0.0, 16.0, -64.0);
-    float orbitR = 40.0;
+    float orbitR = 12.0;
     float baseSize = 5.0 * clamp(g_triArea * 10.0, 0.3, 2.0);
 
     for (int i = 0; i < NUM_HOUSES; i++) {
@@ -303,10 +342,10 @@ vec2 objec(vec3 p, vec2 uv) { // Find distance to nearest object and which objec
         //float tower = sdBox(hp +stackOffset, vec3(hSize/4, hSize/4, hSize*4), uv);
        //float d = tower;
 
-  //   float d = sdHouse(hp, hSize, uv);
-        vec3 starPos = vec3(0.0, 30.0, -64.0); // (kept for reference, unused since hp is already relative)
-      float starDist = sdStar(hp, 28.0, 1.0, uv); // r=28 radius, h=2 half-thickness
-      float d = starDist;
+   float d = sdHouse(hp, hSize, uv);
+      //  vec3 starPos = vec3(0.0, 30.0, -64.0); // (kept for reference, unused since hp is already relative)
+     // float starDist = sdStar(hp, 28.0, 1.0, uv); // r=28 radius, h=2 half-thickness
+      //float d = starDist;
 //float d = sdSTL(hp, 55.0, uv);
 
     

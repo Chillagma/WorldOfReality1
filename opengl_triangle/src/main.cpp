@@ -271,6 +271,7 @@ struct App {
     bool spacePressed = false;
     bool goalCaptured = false;
     bool showingSuccess = false;
+    int score = 0;
     double successStartTime = 0.0;
     MatchResult lastMatch, liveMatch;
 
@@ -650,6 +651,7 @@ int main() {
             if (app.lastMatch.total >= App::SUCCESS_THRESHOLD) {
                 app.showingSuccess = true;
                 app.successStartTime = currentTime;
+                app.score++;
             }
             shouldCapture = false;
         }
@@ -681,6 +683,13 @@ int main() {
             c = app.liveMatch.direction / 100.f;
             std::snprintf(buf, sizeof(buf), "DIR: %d%%", (int)app.liveMatch.direction);
             app.textRenderer.draw(app.quadVao, buf, textX, hudY + 0.04f, textW, textH, 1 - c, c, 0.3f, 1);
+        }
+
+        {
+            char scoreBuf[64];
+            float scoreX = -0.98f, scoreY = 0.92f, scoreW = 0.3f, scoreH = 0.08f;
+            std::snprintf(scoreBuf, sizeof(scoreBuf), "SCORE: %d", app.score);
+            app.textRenderer.draw(app.quadVao, scoreBuf, scoreX, scoreY, scoreW, scoreH, 1, 1, 1, 1);
         }
 
         if (app.showingSuccess) {
