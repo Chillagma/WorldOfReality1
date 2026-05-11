@@ -69,7 +69,7 @@ float sdSTL(vec3 p, float size, vec2 uv) {
 
     vec2  triCenter  = (g_triP1 + g_triP2 + g_triP3) / 3.0;
     float warpFactor = length(uv - triCenter) * (1.0 - centerProximity) * strength * 5.0;
-    float finalScale = max(scaleAmount * (1.0 - warpFactor * 0.5), 0.03);
+    float finalScale = max(scaleAmount * (1.0 - warpFactor * 0.5)*2.5, 0.53);
 
     // USE p DIRECTLY in world space — no camera projection
     vec3 camP = p / (finalScale * size);
@@ -245,6 +245,97 @@ float sdHouse(vec3 p, float size, vec2 uv) { // Distance to a house shape made o
     
     return min(min(roof1, roof2), min(chimney, max(max(walls, -door), -windows))); // Combine: both roof panels, chimney, walls with door and windows subtracted (negative = cut out)
 }
+
+
+
+
+float sdCluster(vec3 p, float size, vec2 uv) {
+    float a = sdBox(p - vec3(size * 0.3, 0.0, 0.0), vec3(size * 0.3, size * 0.4, size * 0.3), uv);
+    float b = sdBox(p - vec3(-size * 0.2, size * 0.3, size * 0.2), vec3(size * 0.25, size * 0.5, size * 0.25), uv);
+    float c = sdBox(p - vec3(0.0, -size * 0.2, -size * 0.3), vec3(size * 0.35, size * 0.3, size * 0.2), uv);
+    float d = sdBox(p - vec3(size * 0.4, size * 0.5, -size * 0.2), vec3(size * 0.2, size * 0.6, size * 0.15), uv);
+    return min(min(a, b), min(c, d));
+}
+
+float sdSpiralTower(vec3 p, float size, vec2 uv) {
+    float areaFactor = clamp(1.0 / (g_triArea + 0.005), 1.0, 80.0);
+    float normalizedArea = smoothstep(0.0, 40.0, areaFactor);
+    float screenDiag = sqrt(1.0 + g_ar * g_ar);
+    float centerProximity = pow(clamp(g_globalEdgeDist / (screenDiag * 0.15), 0.0, 1.0), 0.125);
+    vec3 pPushed = p + g_camDir * (1.0 - centerProximity) * 35.0;
+    float scaleAmount = clamp(0.3 + centerProximity * 0.32, 0.001, 1.0);
+    float colorIntensity = (pow(g_triColor.r, 0.5) * 2.0 + pow(g_triColor.g, 0.5) * 1.8 + pow(g_triColor.b, 0.5) * 1.9) / 3.0;
+    float strength = 0.1 + normalizedArea * 0.3 + colorIntensity * 1.1;
+    vec2 triCenter = (g_triP1 + g_triP2 + g_triP3) / 3.0;
+    float warpFactor = length(uv - triCenter) * (1.0 - centerProximity) * strength * 5.0;
+    float finalScale = max(scaleAmount * (1.0 - warpFactor * 0.5), 0.03);
+    vec3 camP = vec3(dot(pPushed, g_camRight), dot(pPushed, g_camUp), dot(pPushed, g_camDir));
+    camP /= finalScale;
+    float towerHeight = size * 3.0;
+    float yNorm = (camP.y + towerHeight * 0.5) / towerHeight;
+    float turns = 6.0;
+    float angle = atan(camP.z, camP.x) + turns * 6.2831853 * yNorm;
+    float spiralR = size * 0.8 + sin(angle * 2.0) * size * 0.3;
+    float distFromCenter = length(camP.xz);
+    float spiral = abs(distFromCenter - spiralR) - size * 0.08;
+    float core = length(camP.xz) - size * 0.1;
+    float bounds = max(abs(camP.y) - towerHeight * 0.5, 0.0);
+    float dist = max(min(spiral, core), bounds);
+return dist * finalScale;
+}
+
+
+
+float sdZigzagTower(vec3 p, float size, vec2 uv) {
+    float areaFactor = clamp(1.0 / (g_triArea + 0.005), 1.0, 80.0);
+    float normalizedArea = smoothstep(0.0, 40.0, areaFactor);
+    float screenDiag = sqrt(1.0 + g_ar * g_ar);
+    float centerProximity = pow(clamp(g_globalEdgeDist / (screenDiag * 0.15), 0.0, 1.0), 0.125);
+    vec3 pPushed = p + g_camDir * (1.0 - centerProximity) * 35.0;
+    float scaleAmount = clamp(0.3 + centerProximity * 0.32, 0.001, 1.0);
+    float colorIntensity = (pow(g_triColor.r, 0.5) * 2.0 + pow(g_triColor.g, 0.5) * 1.8 + pow(g_triColor.b, 0.5) * 1.9) / 3.0;
+    float strength = 0.1 + normalizedArea * 0.3 + colorIntensity * 1.1;
+    vec2 triCenter = (g_triP1 + g_triP2 + g_triP3) / 3.0;
+    float warpFactor = length(uv - triCenter) * (1.0 - centerProximity) * strength * 5.0;
+    float finalScale = max(scaleAmount * (1.0 - warpFactor * 0.5), 0.03);
+    vec3 camP = vec3(dot(pPushed, g_camRight), dot(pPushed, g_camUp), dot(pPushed, g_camDir));
+    camP /= finalScale;
+    float towerHeight = size * 4.0;
+    float yNorm = (camP.y + towerHeight * 0.5) / towerHeight;
+    float zigzagX = (abs(mod(yNorm * 4.0 + 0.5, 2.0) - 1.0) * 2.0 - 0.5) * size * 1.5;
+    float zigzagZ = (abs(mod(yNorm * 2.0 + 0.25, 2.0) - 1.0) * 2.0 - 0.5) * size * 1.0;
+    vec3 zigzagPos = vec3(zigzagX, camP.y, zigzagZ);
+    float d = length(camP - zigzagPos) - size * 0.18;
+    float bounds = max(abs(camP.y) - towerHeight * 0.5, 0.0);
+    float dist = max(d, bounds);
+    return dist * finalScale;
+}
+
+
+float sdZiggurat(vec3 p, float size, vec2 uv) {
+    float base = sdBox(p - vec3(0.0, size * 0.15, 0.0), vec3(size, size * 0.15, size), uv);
+    float mid1 = sdBox(p - vec3(0.0, size * 0.45, 0.0), vec3(size * 0.7, size * 0.3, size * 0.7), uv);
+    float mid2 = sdBox(p - vec3(0.0, size * 0.75, 0.0), vec3(size * 0.5, size * 0.3, size * 0.5), uv);
+    float top = sdBox(p - vec3(0.0, size * 1.05, 0.0), vec3(size * 0.3, size * 0.3, size * 0.3), uv);
+    float peak = sdBox(p - vec3(0.0, size * 1.35, 0.0), vec3(size * 0.15, size * 0.3, size * 0.15), uv);
+    return min(min(base, mid1), min(min(mid2, top), peak));
+}
+
+
+
+
+float sdRingStack(vec3 p, float size, vec2 uv) {
+    float d = 1e10;
+    for (int i = 0; i < 4; i++) {
+        float fi = float(i);
+        float ring = sdBox(p - vec3(0.0, fi * size * 0.4, 0.0),
+                         vec3(size * (1.0 - fi * 0.15), size * 0.1, size * (1.0 - fi * 0.15)), uv);
+        d = min(d, ring);
+    }
+    return d;
+}
+
+
 // 3D 5-pointed star SDF with the same distortion as sdBox
 float sdStar(vec3 p, float r, float h, vec2 uv) {
     // --- same warp preamble as sdBox ---
@@ -339,14 +430,21 @@ vec2 objec(vec3 p, vec2 uv) { // Find distance to nearest object and which objec
         // Stack vertically: shift only Y by i * boxHeight
         vec3 stackOffset = vec3(0.0, float(i) * hSize, 0.0);
 
-        //float tower = sdBox(hp +stackOffset, vec3(hSize/4, hSize/4, hSize*4), uv);
-       //float d = tower;
+       
 
    float d = sdHouse(hp, hSize, uv);
-      //  vec3 starPos = vec3(0.0, 30.0, -64.0); // (kept for reference, unused since hp is already relative)
-     // float starDist = sdStar(hp, 28.0, 1.0, uv); // r=28 radius, h=2 half-thickness
-      //float d = starDist;
-//float d = sdSTL(hp, 55.0, uv);
+   
+float tower = sdBox(hp +stackOffset+uv.x, vec3(hSize/4, hSize/4, hSize*4), uv);
+      float spiralTower = sdSpiralTower(hp + stackOffset, hSize, uv);
+      float zigzagTower = sdZigzagTower(hp + stackOffset, hSize, uv);
+     
+      ;
+  // d=sdSteps(hp + stackOffset, hSize, uv);
+       
+     float starDist = sdStar(hp, 28.0, 1.0, uv); // r=28 radius, h=2 half-thickness
+       //d = sdRingStack(hp,28.0,uv);
+       //d=starDist;
+     // d = sdSTL(hp, hSize*1.0, uv);
 
     
         if (d < minDist) { minDist = d; objectID = 0.0; } // ID=0 for stars

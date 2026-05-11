@@ -141,43 +141,18 @@ inline MatchResult calculateMatch(const CameraState& goal, const PlayerCamera& p
 // makes sure goals are looking at something interesting
 struct GoalGenerator {
     // Same ring: 5 houses around spawn (0,16,-64) at radius 12
-    struct Vec3 { float x, y, z; };
-    std::vector<Vec3> objects = [] {
-        std::vector<Vec3> v;
-        constexpr float ax = 0.f, ay = 16.f, az = -64.f;
-        constexpr float r = 0.1f;
-        constexpr int n = 5;
-        for (int i = 0; i < n; ++i) {
-            float a = static_cast<float>(i) * 6.2831853f / static_cast<float>(n);
-            v.push_back({ ax + std::cos(a) * r, ay, az + std::sin(a) * r });
-        }
-        return v;
-    }();
-
-// check if camera can see any objects
+struct Vec3 { float x, y, z; };
+    
+    // check if camera is looking toward SDF houses area (0,16,-64)
     bool isValidGoalPosition(const CameraState& cam) {
-        for (auto& obj : objects) {
-            // vector from camera to object
-            float toObjX = obj.x - cam.posX;
-            float toObjY = obj.y - cam.posY;
-            float toObjZ = obj.z - cam.posZ;
-            
-            // distance to object
-            float dist = std::sqrt(toObjX * toObjX + toObjY * toObjY + toObjZ * toObjZ);
-            if (dist < 0.1f) continue; // too close, skip
-            
-            // normalize
-            toObjX /= dist; toObjY /= dist; toObjZ /= dist;
-            
-            // dot product = 1 means looking directly at it
-            float dot = toObjX * cam.dirX + toObjY * cam.dirY + toObjZ * cam.dirZ;
-            
-            // more lenient: accept wider field of view
-            if (dot > 0.3f && dist < 70.0f) {
-                return true;  // good goal!
-            }
-        }
-        return false;  // cant see anything, bad goal
+        float toAnchorX = -cam.posX;
+        float toAnchorY = 16.0f - cam.posY;
+        float toAnchorZ = -64.0f - cam.posZ;
+        float dist = std::sqrt(toAnchorX*toAnchorX + toAnchorY*toAnchorY + toAnchorZ*toAnchorZ);
+        if (dist < 2.0f || dist > 100.0f) return false;
+        toAnchorX /= dist; toAnchorY /= dist; toAnchorZ /= dist;
+        float dot = toAnchorX * cam.dirX + toAnchorY * cam.dirY + toAnchorZ * cam.dirZ;
+        return dot > -0.2f;
     }
 
     // keep trying random positions until one works

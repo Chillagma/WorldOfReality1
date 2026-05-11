@@ -91,8 +91,8 @@ static const int MESH_TEX_WIDTH = 1024;
 
 // Hard cap — GLSL loop will freeze/crash GPU if too many triangles
 // 500 is safe for a raymarcher running every pixel every frame
-static const int MAX_TRIANGLES = 500;
-static const int SDF_RES = 64; // 64x64x64 grid, baked once at startup
+static const int MAX_TRIANGLES = 1500;
+static const int SDF_RES = 60;
 
 
 
@@ -287,7 +287,7 @@ struct App {
     static constexpr float SUCCESS_DISPLAY_TIME = 3.0f;
     static constexpr float THUMBNAIL_SIZE = 0.35f;
     static constexpr float MARGIN = 0.02f;
-    static constexpr float MIN_OBJECT_COVERAGE = 0.10f;
+    static constexpr float MIN_OBJECT_COVERAGE = 0.02f;
     std::mt19937 rng;
 
     void recreateFbos() {
