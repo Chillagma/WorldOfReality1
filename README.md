@@ -82,10 +82,6 @@ Or run directly from Visual Studio by pressing **F5**.
 - Check that shaders folder is next to the executable
 - Verify your GPU supports OpenGL 3.3+
 
-## Customizing Shapes
-
-The project uses GLSL SDF (Signed Distance Functions) for procedural geometry. Edit `shaders/common.glsl` to modify or add new shapes. See the SDF function references in the code.
-
 ## License
 
 MIT License
