@@ -82,6 +82,3 @@ Or run directly from Visual Studio by pressing **F5**.
 - Check that shaders folder is next to the executable
 - Verify your GPU supports OpenGL 3.3+
 
-## License
-
-MIT License
