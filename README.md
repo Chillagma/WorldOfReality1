@@ -51,23 +51,6 @@ opengl_triangle\build\Release\opengl_triangle.exe
 
 Or run directly from Visual Studio by pressing **F5**.
 
-## Project Structure
-
-```
-WorldOfReality/
-├── opengl_triangle/        # Main OpenGL application
-│   ├── src/
-│   │   └── main.cpp        # Main application code
-│   ├── shaders/            # GLSL shader files
-│   │   ├── common.glsl     # SDF functions
-│   │   ├── image.frag      # Main raymarching shader
-│   │   └── fullscreen.vert
-│   ├── third_party/        # Dependencies (GLAD, GLFW)
-│   └── CMakeLists.txt      # Build configuration
-├── README.md               # This file
-└── ...                     # Other project files
-```
-
 ## Controls
 
 | Input | Action |
