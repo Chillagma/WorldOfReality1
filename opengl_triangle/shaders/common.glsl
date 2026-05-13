@@ -284,7 +284,43 @@ float sdSpiralTower(vec3 p, float size, vec2 uv) {
 return dist * finalScale;
 }
 
+float sdStreet(vec3 p, float width) {
+    float d = p.y + 0.1;
+    float gridX = mod(p.x + width * 0.5, width) - width * 0.5;
+    float gridZ = mod(p.z + width * 0.5, width) - width * 0.5;
+    float streetX = abs(gridX) - width * 0.15;
+    float streetZ = abs(gridZ) - width * 0.15;
+    return min(max(streetX, -p.y - 0.1), max(streetZ, -p.y - 0.1));
+}
 
+float sdLandscape(vec3 p, float size, vec2 uv) {
+    float areaFactor = clamp(1.0 / (g_triArea + 0.005), 1.0, 80.0);
+    float normalizedArea = smoothstep(0.0, 40.0, areaFactor);
+    float screenDiag = sqrt(1.0 + g_ar * g_ar);
+    float centerProximity = pow(clamp(g_globalEdgeDist / (screenDiag * 0.15), 0.0, 1.0), 0.125);
+    vec3 pPushed = p + g_camDir * (1.0 - centerProximity) * 35.0;
+    float scaleAmount = clamp(0.3 + centerProximity * 0.32, 0.001, 1.0);
+    float colorIntensity = (pow(g_triColor.r, 0.5) * 2.0 + pow(g_triColor.g, 0.5) * 1.8 + pow(g_triColor.b, 0.5) * 1.9) / 3.0;
+    float strength = 0.1 + normalizedArea * 0.3 + colorIntensity * 1.1;
+    vec2 triCenter = (g_triP1 + g_triP2 + g_triP3) / 3.0;
+    float warpFactor = length(uv - triCenter) * (1.0 - centerProximity) * strength * 5.0;
+    float finalScale = max(scaleAmount * (1.0 - warpFactor * 0.5), 0.03);
+    vec3 camP = vec3(dot(pPushed, g_camRight), dot(pPushed, g_camUp), dot(pPushed, g_camDir));
+    camP /= finalScale;
+    float street = sdStreet(camP, size * 1.5);
+    float houses = 1e10;
+    for (int hx = -2; hx <= 2; hx++) {
+        for (int hz = -2; hz <= 2; hz++) {
+            if (hx == 0 && hz == 0) continue;
+            vec3 housePos = vec3(float(hx) * size * 1.5, 0.0, float(hz) * size * 1.5);
+            float houseSize = size * (0.6 + hash(float(hx * 10 + hz + 50)) * 0.6);
+            vec3 hp = camP - housePos;
+            float house = sdHouse(hp, houseSize, uv);
+            houses = min(houses, house);
+        }
+    }
+    return min(street, houses);
+}
 
 float sdZigzagTower(vec3 p, float size, vec2 uv) {
     float areaFactor = clamp(1.0 / (g_triArea + 0.005), 1.0, 80.0);
@@ -435,10 +471,11 @@ vec2 objec(vec3 p, vec2 uv) { // Find distance to nearest object and which objec
    float d = sdHouse(hp, hSize, uv);
    
 float tower = sdBox(hp +stackOffset+uv.x, vec3(hSize/4, hSize/4, hSize*4), uv);
-      float spiralTower = sdSpiralTower(hp + stackOffset, hSize, uv);
+float spiralTower = sdSpiralTower(hp + stackOffset, hSize, uv);
       float zigzagTower = sdZigzagTower(hp + stackOffset, hSize, uv);
-     
-      ;
+      // float letter = sdLetterM(hp + stackOffset, hSize, uv);
+      float landscape = sdHouse(hp, hSize, uv);
+      d = landscape;
   // d=sdSteps(hp + stackOffset, hSize, uv);
        
      float starDist = sdStar(hp, 28.0, 1.0, uv); // r=28 radius, h=2 half-thickness

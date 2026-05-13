@@ -76,6 +76,15 @@ void main() {
     vec2 uv = fragCoord / iResolution.xy;
     vec2 uvRay = (2.0 * fragCoord - iResolution.xy) / iResolution.y;
     
+    // Early exit for outer area - no raymarching needed
+    float centerX = abs(uv.x - 0.5) * 2.0;
+    float centerY = abs(uv.y - 0.5) * 2.0;
+    float centerMask = smoothstep(0.25, 0.65, max(centerX, centerY));
+    if (centerMask > 0.99) {
+        fragColor = vec4(0.0, 0.0, 0.0, 0.0);
+        return;
+    }
+    
     // Init globals
     g_ar = iResolution.x / iResolution.y;
     
