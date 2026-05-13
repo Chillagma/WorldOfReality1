@@ -46,7 +46,7 @@ cmake --build . --config Release
 
 After building, find the executable in:
 ```
-opengl_triangle\build\Release\opengl_triangle.exe
+opengl_triangle\build_new\Debug\opengl_triangle.exe
 ```
 
 Or run directly from Visual Studio by pressing **F5**.

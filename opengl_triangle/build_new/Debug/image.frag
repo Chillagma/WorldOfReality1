@@ -1,9 +1,3 @@
-// test
-// testing again
-// final test
-// TOGGLE NEON GLOW: change to true to enable, false to disable
-const bool ENABLE_NEON_GLOW = true;
-
 // Note: common.glsl is prepended - contains #version, uniforms, globals, and functions
 #ifndef COMMON_INCLUDED
 vec4 fragColor;
@@ -24,9 +18,7 @@ float minEdgeDist(vec2 a, vec2 b, vec2 c, vec2 d) { return 0.0; }
 vec3 getBarycentricCoords(vec2 a, vec2 b, vec2 c, vec2 d) { return vec3(0); }
 vec2 rotate(vec2 a) { return vec2(0); }
 vec2 objec(vec3 a, vec2 b) { return vec2(0); }
-uniform sampler2D uMeshTex;
-uniform int uSdfRes;
-uniform int uSlicesPerRow;
+
 #endif
 
 // Camera override uniforms
@@ -34,6 +26,7 @@ uniform int uCameraOverride;
 uniform vec3 uCameraPosOverride;
 uniform vec2 uCameraRotOverride;
 uniform int uDetectionMode;
+
 // ============== AESTHETIC HELPERS ==============
 vec3 aces(vec3 x) {
     const float a = 2.51, b = 0.03, c = 2.43, d = 0.59, e = 0.14;
@@ -76,15 +69,6 @@ void main() {
     vec2 uv = fragCoord / iResolution.xy;
     vec2 uvRay = (2.0 * fragCoord - iResolution.xy) / iResolution.y;
     
-    // Early exit for outer area - no raymarching needed
-    float centerX = abs(uv.x - 0.5) * 2.0;
-    float centerY = abs(uv.y - 0.5) * 2.0;
-    float centerMask = smoothstep(0.25, 0.65, max(centerX, centerY));
-    if (centerMask > 0.99) {
-        fragColor = vec4(0.0, 0.0, 0.0, 0.0);
-        return;
-    }
-    
     // Init globals
     g_ar = iResolution.x / iResolution.y;
     
@@ -106,44 +90,44 @@ void main() {
     
     // Vertices
     vec2 c_bl=vec2(0,0), c_br=vec2(1,0), c_tr=vec2(1,1), c_tl=vec2(0,1);
-vec2 c_bm=vec2(.5,0), c_tm=vec2(.5,1), c_ml=vec2(0,.5), c_mr=vec2(1,.5);
-    vec2 c_mid1=(c_bm+c_ml)*.5, c_mid2=(c_br+c_mr)*.5, c_mid3=(c_tm+c_tr)*.5, c_mid4=(c_tm+c_tl)*.5;
-    vec2 v0=vec2(0.2,0.2), v1=vec2(.5,.5), v2=vec2(.3,.15), v3=vec2(.7,.35);
-    vec2 v4=vec2(.65,.65), v7=vec2(.8,.8), v9=vec2(.5,.25), v12=vec2(.2,.65);
+    vec2 c_bm=vec2(.5,0), c_tm=vec2(.5,1), c_ml=vec2(0,.5), c_mr=vec2(1,.5);
+    vec2 c_mid1=(c_bm+c_ml)*.5, c_mid2=(c_br+c_mr)*.5, c_mid3=(c_tr+c_tm)*.5, c_mid4=(c_tm+c_tl)*.5;
+    vec2 v0=vec2(0,0), v1=vec2(.5,.5), v2=vec2(.25,.05), v3=vec2(.75,.25);
+    vec2 v4=vec2(.55,.55), v7=vec2(1,1), v9=vec2(.5,.15), v12=vec2(0,.55);
     vec2 vm1=(v0+v7)*.5, vm2=(v0+v12)*.5, vm3=(v7+v12)*.5;
     
-    // Professional color palette
+    // MORE SATURATED color palettes (increased color intensity)
     vec3 triColors[19] = vec3[](
-        vec3(0.76, 0.22, 0.23),    // deep crimson
-        vec3(0.25, 0.58, 0.39),   // forest green
-        vec3(0.24, 0.41, 0.65),   // royal blue
-        vec3(0.28, 0.58, 0.62),   // teal
-        vec3(0.91, 0.90, 0.87),   // off-white
-        vec3(0.95, 0.78, 0.18),   // gold
-        vec3(0.63, 0.28, 0.58),   // magenta
-        vec3(0.72, 0.33, 0.53),  // rose
-        vec3(0.55, 0.27, 0.53),  // mauve
-        vec3(0.45, 0.23, 0.48),  // plum
-        vec3(0.12, 0.12, 0.15),  // charcoal
-        vec3(0.45, 0.23, 0.52),  // amethyst
-        vec3(0.58, 0.50, 0.14),  // olive
-        vec3(0.18, 0.48, 0.52),  // deep teal
-        vec3(0.93, 0.49, 0.19),  // burnt orange
-        vec3(0.65, 0.40, 0.22),  // sienna
-        vec3(0.82, 0.33, 0.35),  // coral
-        vec3(0.30, 0.58, 0.45),  // jade
-        vec3(0.38, 0.42, 0.62)   // slate blue
+        vec3(1.0, 0.15, 0.2),    // vivid red
+        vec3(0.1, 0.95, 0.4),    // vivid green
+        vec3(0.15, 0.35, 1.0),   // vivid blue
+        vec3(0.0, 0.95, 0.95),   // vivid cyan
+        vec3(0.95, 0.95, 0.98),  // white (keep neutral)
+        vec3(1.0, 0.9, 0.0),     // vivid yellow
+        vec3(1.0, 0.2, 0.9),     // vivid magenta
+        vec3(0.95, 0.15, 0.85),  // vivid pink
+        vec3(0.85, 0.1, 0.75),   // vivid pink 2
+        vec3(0.75, 0.08, 0.65),  // vivid purple-pink
+        vec3(0.08, 0.08, 0.12),  // dark (keep)
+        vec3(0.65, 0.1, 0.7),    // vivid purple
+        vec3(0.75, 0.65, 0.0),   // vivid olive/gold
+        vec3(0.0, 0.6, 0.65),    // vivid teal
+        vec3(1.0, 0.5, 0.0),     // vivid orange
+        vec3(0.75, 0.35, 0.0),   // vivid brown/orange
+        vec3(1.0, 0.2, 0.3),     // vivid coral
+        vec3(0.2, 0.95, 0.5),    // vivid sea green
+        vec3(0.35, 0.4, 1.0)     // vivid slate blue
     );
     
     vec3 cornerColors[8] = vec3[](
-        vec3(0.25, 0.38, 0.58),   // navy blue
-        vec3(0.30, 0.44, 0.65),
-        vec3(0.58, 0.25, 0.32),   // burgundy
-        vec3(0.65, 0.30, 0.38),
-        vec3(0.35, 0.52, 0.28),   // hunter green
-        vec3(0.40, 0.58, 0.32),
-        vec3(0.45, 0.35, 0.52),   // purple
-        vec3(0.52, 0.40, 0.58)
+        vec3(0.15, 0.35, 0.7),   // saturated blue
+        vec3(0.2, 0.45, 0.8),
+        vec3(0.7, 0.2, 0.35),    // saturated red
+        vec3(0.8, 0.25, 0.4),
+        vec3(0.3, 0.7, 0.2),     // saturated green
+        vec3(0.35, 0.8, 0.3),
+        vec3(0.55, 0.35, 0.6),   // saturated purple
+        vec3(0.65, 0.4, 0.7)
     );
     
     // Triangles
@@ -258,18 +242,17 @@ vec2 c_bm=vec2(.5,0), c_tm=vec2(.5,1), c_ml=vec2(0,.5), c_mr=vec2(1,.5);
     float t3 = abs(sin(iTime * 0.5));
     
     // ====== BARYCENTRIC CORNER DARKENING SETTINGS ======
-    float cornerDarknessAmount = 2.55;
-    float cornerFalloffStart = 0.94;
-    float cornerFalloffEnd = 0.15;
-    float cornerPower = 5.0;
+    float cornerDarknessAmount = 0.05;
+    float cornerFalloffStart = 0.4;
+    float cornerFalloffEnd = 0.95;
+    float cornerPower = 2.0;
     
-for (int i = 0; i < TRI_SIZE; i++) {
+    for (int i = 0; i < TRI_SIZE; i++) {
         vec2 p1=tri[i*3], p2=tri[i*3+1], p3=tri[i*3+2];
         if (pointInTriangle(uv, p1, p2, p3)) {
             col = triColors[i];
             
-           
-            
+            // === ORIGINAL GRID LINES ===
             float dt = abs(uv.y - p1.y);
             float dl = abs(uv.x - p2.x);
             float dr = abs(uv.x - p3.x);
@@ -277,39 +260,36 @@ for (int i = 0; i < TRI_SIZE; i++) {
             float rl = fract(atan(uv.x - p2.x, uv.y - p2.y) * 11.3);
             float rr = fract(atan(uv.x - p3.x, uv.y - p3.y) * 5.3);
             float rv = fract(atan(uv.x - p1.x, uv.y - p1.y) * 6.3);
-             
-            vec3 bary = getBarycentricCoords(uv, p1, p2, p3);
-
-            float gradientFactor = bary.x * 1.5 + bary.y* 1.55;
-            col *= mix(1.0, 0.25, gradientFactor);
-            float minBary = min(bary.x, min(bary.y, bary.z));
-            float centerBrightness = smoothstep(0.0, 0.05, bary.z);
-            col *= mix(1.0, 0.1, centerBrightness);
             
+            // Radial grid lines
             if (min(rl, 1.0 - rl) < 0.05 || min(rr, 1.0 - rr) < 0.05 || min(rv, 1.0 - rv) < 0.05) {
-                if (ENABLE_NEON_GLOW) {
-                    float glowDist = min(rl, min(rr, rl));
-                    float glow = smoothstep(0.05, 0.0, glowDist);
-                    vec3 neonColor = mix(vec3(0.3, 0.2, 1.0), vec3(0.2, 0.5, 1.0), uv.x + uv.y +rv);
-                    col /=( mix(vec3(0.2), vec3(0.12), centerBrightness+rl-rr*rv) +neonColor * glow * 1.0)*6.0;
-                } else {
-                 float glowDist = min(rl, min(rr, rl));
-                    float glow = smoothstep(0.05, 0.0, glowDist);
-                    vec3 neonColor = mix(vec3(0.3, 0.2, 1.0), vec3(0.2, 0.5, 1.0), uv.x + uv.y +rl-rr*rv);
-                     col = mix(vec3(0.2), vec3(1.0), centerBrightness);
-                }
+                col = mix(vec3(1.0), vec3(0.0), dt);
             }
+            
+            // Color mixing based on position
+            col = mix(col, vec3(t1), dr - dl);
+            col = mix(col, vec3(t2), dt - dl - dr);
+            col = mix(col / 1.72, vec3(t3), dt - dr - dl * 0.4);
+            
+            // ====== BARYCENTRIC CORNER DARKENING ======
+            vec3 bary = getBarycentricCoords(uv, p1, p2, p3);
+            float maxBary = max(bary.x, max(bary.y, bary.z));
+            float cornerProximity = smoothstep(cornerFalloffStart, cornerFalloffEnd, maxBary);
+            cornerProximity = pow(cornerProximity, cornerPower);
+            float darkenFactor = mix(1.0, cornerDarknessAmount, cornerProximity);
+            col *= darkenFactor;
+            
+            // Boost saturation per-triangle
+            col = adjustSaturation(col, 0.6);
         }
     }
     
-for (int i = 0; i < CORNER_SIZE; i++) {
+    for (int i = 0; i < CORNER_SIZE; i++) {
         vec2 p1=cornerTri[i*3], p2=cornerTri[i*3+1], p3=cornerTri[i*3+2];
         if (pointInTriangle(uv, p1, p2, p3)) {
             col = cornerColors[i];
             
-            float gradientFactor = uv.x * 0.5 + uv.y * 0.5;
-            col *= mix(1.0, 0.25, gradientFactor);
-            
+            // === ORIGINAL GRID LINES ===
             float dt = abs(uv.y - p1.y);
             float dl = abs(uv.x - p2.x);
             float dr = abs(uv.x - p3.x);
@@ -318,34 +298,32 @@ for (int i = 0; i < CORNER_SIZE; i++) {
             float rr = fract(atan(uv.x - p3.x, uv.y - p3.y) * 5.3);
             float rv = fract(atan(uv.x - p1.x, uv.y - p1.y) * 6.3);
             
-            vec3 bary = getBarycentricCoords(uv, p1, p2, p3);
-            float minBary = min(bary.x, min(bary.y, bary.z));
-            float centerBrightness = smoothstep(0.0, 0.35, minBary);
-            col *= mix(1.0, 0.1, centerBrightness);
-            
+            // Radial grid lines
             if (min(rl, 1.0 - rl) < 0.05 || min(rr, 1.0 - rr) < 0.05 || min(rv, 1.0 - rv) < 0.05) {
-                if (ENABLE_NEON_GLOW) {
-                    float glowDist = min(rl, min(rr, rv));
-                    float glow = smoothstep(0.12, 0.0, glowDist);
-                    vec3 neonColor = mix(vec3(0.3, 0.2, 1.0), vec3(0.2, 0.5, 1.0), uv.x + uv.y);
-                    col += neonColor * glow * 2.0;
-                } else {
-                    col = mix(vec3(0.2), vec3(1.0), centerBrightness);
-                }
+                col = mix(vec3(1.0), vec3(0.0), dt);
             }
+            
+            // Color mixing based on position
+            col = mix(col * 2.0, vec3(t1), dr - dl);
+            col = mix(col / 1.2, vec3(t2), dt - dl - dr);
+            col = mix(col / 1.72, vec3(t2), dt - dr - dl * 0.4);
+            
+            // ====== BARYCENTRIC CORNER DARKENING ======
+            vec3 bary = getBarycentricCoords(uv, p1, p2, p3);
+            float maxBary = max(bary.x, max(bary.y, bary.z));
+            float cornerProximity = smoothstep(cornerFalloffStart, cornerFalloffEnd, maxBary);
+            cornerProximity = pow(cornerProximity, cornerPower);
+            float darkenFactor = mix(1.0, cornerDarknessAmount, cornerProximity);
+            col *= darkenFactor;
+            
+            // Boost saturation per-triangle
+            col = adjustSaturation(col, 1.3);
         }
     }
     
     // ====== APPLY CLEAN OUTLINES - ONLY ON THE LINE ITSELF ======
-if (ENABLE_NEON_GLOW) {
-    float line = 1.0 - smoothstep(0.0, 0.0025, minEdgeDistance);
-    float glow = 1.0 - smoothstep(0.0, 0.008,  minEdgeDistance);
-
-    col /= mix(vec3(1.0), vec3(1.3, 1.25, 1.0), glow * 0.2); // faint halo
-    col /= mix(vec3(1.0), vec3(10.3, 10.2, 1.0), line);       // thin blue core
-} else {
-    col *= outlineColor;
-}
+    col = mix(col, outlineColor, outlineFactor);
+    
     // ============== ENHANCED 3D LIGHTING ==============
     vec3 lightDir = normalize(vec3(0.8, 0.6, -0.5));
     vec3 lightDir2 = normalize(vec3(-0.15, 0.3, 0.7));
